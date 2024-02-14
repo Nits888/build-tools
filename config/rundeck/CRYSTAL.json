@@ -1,0 +1,18 @@
+{
+  "maven": {
+    "nodes": ["node1", "node2"],
+    "jobs": ["job1", "job2"]
+  },
+  "npm": {
+    "nodes": ["node3", "node4"],
+    "jobs": ["job3", "job4"]
+  },
+  "docker": {
+    "nodes": ["node5", "node6"],
+    "jobs": ["job5", "job6"]
+  },
+  "tar": {
+    "nodes": ["node7", "node8"],
+    "jobs": ["job7", "job8"]
+  }
+}
