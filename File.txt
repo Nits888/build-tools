@@ -1,35 +1,49 @@
 # Import the call_api function from rundeck_utils
 from modules.rundeck_utils import call_api
 
+# Function to trigger deployment job for a given list of nodes and job details
+def trigger_job_for_nodes(nodes, job_name):
+    job_results = []
+    for node in nodes:
+        try:
+            response = call_api(node["url"], method='POST', headers={"X-Rundeck-Auth-Token": node["token"]})
+            response.raise_for_status()  # Raise an error for bad status codes
+            
+            if "id" in response:
+                # If job was successfully triggered, get the execution ID
+                execution_id = response["id"]
+                
+                # Add the node's information along with the execution ID to the job results
+                job_results.append({
+                    "url": node["url"],
+                    "token": node["token"],
+                    "execution_id": execution_id
+                })
+                logger.info(f"Triggered Rundeck job '{job_name}' on node '{node['url']}'")
+            else:
+                logger.error(f"Error triggering Rundeck job '{job_name}' on node '{node['url']}'")
+        except Exception as e:
+            logger.error(f"An error occurred while triggering Rundeck job '{job_name}' on node '{node['url']}': {e}")
+    
+    return job_results
+
 # Function to trigger deployment job in Rundeck
 def trigger_deployment_job(rundeck_config, env_variables, build_type):
     job_results = {}
     if "RUNDECK_JOB" in env_variables and "RUNDECK_NODES" in env_variables:
         job_name = env_variables["RUNDECK_JOB"]
         nodes = env_variables["RUNDECK_NODES"].split(',')
-        job_results[''] = {"job_name": job_name, "nodes": [{"url": node, "token": ""} for node in nodes]}
+        job_results[''] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name)}
+                
     elif rundeck_config:
         for env_name, env_details in rundeck_config.items():
             if env_name in env_variables.get("ENV_NAME", ""):
                 nodes = env_details.get(build_type, {}).get("nodes", [])
                 job_name = env_details.get(build_type, {}).get("job_name")
                 
-                # Call the API to execute the Rundeck job for all nodes in the environment
-                job_results[env_name] = {"job_name": job_name, "nodes": []}
-                for node in nodes:
-                    response = call_api(node["url"], method='POST', headers={"X-Rundeck-Auth-Token": node["token"]})
-                    if response and "id" in response:
-                        # If job was successfully triggered, get the execution ID
-                        execution_id = response["id"]
-                        
-                        # Add the node's information along with the execution ID to the job results
-                        job_results[env_name]["nodes"].append({
-                            "url": node["url"],
-                            "token": node["token"],
-                            "execution_id": execution_id
-                        })
-                    else:
-                        logger.error(f"Error executing Rundeck job '{job_name}' on node '{node['url']}'")
+                # Call the function to trigger the job for the environment's nodes
+                job_results[env_name] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name)}
     else:
         raise ValueError("No Rundeck configuration found.")
+    
     return job_results
