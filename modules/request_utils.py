@@ -1,29 +1,69 @@
-# request_utils.py
-from modules.custom_logger import setup_custom_logger
-import requests
-
-# Setup custom logger
-logger = setup_custom_logger(__name__)
-
-
-def call_api(url, method='GET', params=None, data=None, headers=None):
-    """
-    Function to make an HTTP request to the specified URL using the given method.
-
-    Args:
-        url (str): The URL of the API endpoint.
-        method (str): The HTTP method to use (GET, POST, PUT, DELETE). Defaults to 'GET'.
-        params (dict): Optional dictionary of URL parameters.
-        data (dict): Optional dictionary of data to send in the request body (for POST and PUT requests).
-        headers (dict): Optional dictionary of request headers.
-
-    Returns:
-        dict: The JSON response received from the API, or None if an error occurs.
-    """
+def main():
     try:
-        response = requests.request(method, url, params=params, data=data, headers=headers)
-        response.raise_for_status()  # Raise an error for bad status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error calling API: {e}")
-        return None
+        # Determine the deploy type based on the files in the workspace directory
+        deploy_type = determine_deploy_type()
+
+        # Load the JSON configuration file
+        with open("path/to/config.json", "r") as json_file:
+            config = json.load(json_file)
+
+        # Get the nodes and job mappings for the deploy type
+        deploy_config = config.get(deploy_type, {})
+        if not deploy_config:
+            logger.error("No configuration found for the deploy type.")
+            return
+
+        # Get the list of environments from the ENV_NAME variable
+        env_names = os.getenv("ENV_NAME", "").split(",")
+
+        # Authenticate with Rundeck
+        session = authenticate_with_rundeck(RUNDECK_USERNAME, RUNDECK_PASSWORD, RUNDECK_URL)
+        if not session:
+            logger.error("Failed to authenticate with Rundeck.")
+            return
+
+        for env_name in env_names:
+            env_config = deploy_config.get(env_name, {})
+            if not env_config:
+                logger.error(f"No configuration found for environment: {env_name}")
+                continue
+
+            nodes = env_config.get("nodes", [])
+            job_name = env_config.get("job_name", "")
+
+            # Construct the argstring with all nodes for the job
+            argstring = ",".join([node["url"] for node in nodes])
+
+            # Trigger the Rundeck job for the environment
+            job_execution_id = trigger_rundeck_job(session, job_name, argstring)
+            if not job_execution_id:
+                logger.error(f"Failed to trigger job for environment: {env_name}")
+                continue
+
+            logger.info(f"Triggered Rundeck job '{job_name}' for environment '{env_name}'")
+
+            # Check the status of the triggered job
+            job_status = None
+            timeout = 600  # Timeout in seconds (10 minutes)
+            interval = 60   # Check status every 1 minute
+            while timeout > 0:
+                job_status = check_job_status(session, job_execution_id)
+                if job_status in ["running", "scheduled"]:
+                    logger.info(f"Job '{job_name}' in '{env_name}' is {job_status}, waiting...")
+                    time.sleep(interval)
+                    timeout -= interval
+                elif job_status == "succeeded":
+                    logger.info(f"Job '{job_name}' in '{env_name}' completed successfully.")
+                    break
+                else:
+                    logger.error(f"Job '{job_name}' in '{env_name}' failed or terminated.")
+                    break
+            else:
+                logger.error(f"Timeout exceeded while waiting for job '{job_name}' in '{env_name}'")
+
+    except Exception as e:
+        logger.exception(f"An error occurred during code deployment: {e}")
+        exit(1)
+
+if __name__ == "__main__":
+    main()
