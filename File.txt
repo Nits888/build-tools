@@ -1,14 +1,5 @@
-import os
-
-from modules.build_utils import check_build_type
-from modules.custom_logger import setup_custom_logger
-from modules.env_utils import read_properties_file, PROPERTIES_FILE_PATH, add_variables_to_properties_file
-from modules.rundeck_utils import determine_rundeck_config
-from modules.rundeck_utils import call_api  # Import the call_api function from rundeck_utils
-
-# Setup custom logger
-logger = setup_custom_logger(__name__)
-
+# Import the call_api function from rundeck_utils
+from modules.rundeck_utils import call_api
 
 # Function to trigger deployment job in Rundeck
 def trigger_deployment_job(rundeck_config, env_variables, build_type):
@@ -22,37 +13,23 @@ def trigger_deployment_job(rundeck_config, env_variables, build_type):
             if env_name in env_variables.get("ENV_NAME", ""):
                 nodes = env_details.get(build_type, {}).get("nodes", [])
                 job_name = env_details.get(build_type, {}).get("job_name")
-                job_results[env_name] = {"job_name": job_name, "nodes": nodes}
+                
+                # Call the API to execute the Rundeck job for all nodes in the environment
+                job_results[env_name] = {"job_name": job_name, "nodes": []}
+                for node in nodes:
+                    response = call_api(node["url"], method='POST', headers={"X-Rundeck-Auth-Token": node["token"]})
+                    if response and "id" in response:
+                        # If job was successfully triggered, get the execution ID
+                        execution_id = response["id"]
+                        
+                        # Add the node's information along with the execution ID to the job results
+                        job_results[env_name]["nodes"].append({
+                            "url": node["url"],
+                            "token": node["token"],
+                            "execution_id": execution_id
+                        })
+                    else:
+                        logger.error(f"Error executing Rundeck job '{job_name}' on node '{node['url']}'")
     else:
         raise ValueError("No Rundeck configuration found.")
     return job_results
-
-
-# Main function
-def main():
-    job_results = {}  # Initialize job_results as an empty dictionary
-    try:
-        # Read environment variables from env.properties file
-        env_variables = read_properties_file(PROPERTIES_FILE_PATH)
-
-        # Determine build type dynamically
-        build_type = check_build_type(os.getcwd())
-
-        # Determine Rundeck configuration based on project or environment variables
-        rundeck_config = determine_rundeck_config(env_variables)
-
-        # Trigger deployment job for each environment specified in ENV_NAME
-        job_results = trigger_deployment_job(rundeck_config, env_variables, build_type)
-
-        # Add Rundeck job IDs to the properties file
-        add_variables_to_properties_file(job_results, PROPERTIES_FILE_PATH)
-
-        logger.info("Code deployment process completed successfully")
-
-    except Exception as e:
-        logger.exception(f"An error occurred during code deployment: {e}")
-        exit(1)
-
-
-if __name__ == "__main__":
-    main()
