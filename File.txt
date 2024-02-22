@@ -27,6 +27,9 @@ def call_api(url, method='GET', params=None, data=None, headers=None):
 def trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url):
     job_results = []
     
+    # Construct argstring with all nodes
+    argstring = ",".join([node["url"] for node in nodes])
+    
     # Authenticate with Rundeck to get the session cookie
     login_data = {
         "j_username": username,
@@ -40,56 +43,28 @@ def trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url):
         logger.error(f"Error authenticating with Rundeck: {e}")
         return job_results
     
-    for node in nodes:
-        try:
-            response = session.post(
-                node["url"], 
-                json={"job_name": job_name},
-                headers={"Content-Type": "application/json"}
-            )
-            response.raise_for_status()
+    try:
+        response = session.post(
+            f"{rundeck_url}/api/14/job/{job_name}/run",
+            json={"argString": argstring},
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        
+        if "id" in response.json():
+            # If job was successfully triggered, get the execution ID
+            execution_id = response.json()["id"]
             
-            if "id" in response.json():
-                # If job was successfully triggered, get the execution ID
-                execution_id = response.json()["id"]
-                
-                # Add the node's information along with the execution ID to the job results
-                job_results.append({
-                    "url": node["url"],
-                    "token": node["token"],
-                    "execution_id": execution_id
-                })
-                logger.info(f"Triggered Rundeck job '{job_name}' on node '{node['url']}'")
-            else:
-                logger.error(f"Error triggering Rundeck job '{job_name}' on node '{node['url']}'")
-        except Exception as e:
-            logger.error(f"An error occurred while triggering Rundeck job '{job_name}' on node '{node['url']}': {e}")
-    
-    return job_results
-
-# Function to trigger deployment job in Rundeck
-def trigger_deployment_job(rundeck_config, env_variables, build_type):
-    job_results = {}
-    if "RUNDECK_JOB" in env_variables and "RUNDECK_NODES" in env_variables:
-        job_name = env_variables["RUNDECK_JOB"]
-        nodes = env_variables["RUNDECK_NODES"].split(',')
-        username = env_variables.get("RD_USR")
-        password = env_variables.get("RD_PASS")
-        rundeck_url = env_variables.get("RUNDECK_URL")
-        job_results[''] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url)}
-                
-    elif rundeck_config:
-        for env_name, env_details in rundeck_config.items():
-            if env_name in env_variables.get("ENV_NAME", ""):
-                nodes = env_details.get(build_type, {}).get("nodes", [])
-                job_name = env_details.get(build_type, {}).get("job_name")
-                username = env_variables.get("RD_USR")
-                password = env_variables.get("RD_PASS")
-                rundeck_url = env_variables.get("RUNDECK_URL")
-                
-                # Call the function to trigger the job for the environment's nodes
-                job_results[env_name] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url)}
-    else:
-        raise ValueError("No Rundeck configuration found.")
+            # Add the job details along with the execution ID to the job results
+            job_results.append({
+                "job_name": job_name,
+                "nodes": nodes,
+                "execution_id": execution_id
+            })
+            logger.info(f"Triggered Rundeck job '{job_name}' with arguments: {argstring}")
+        else:
+            logger.error(f"Error triggering Rundeck job '{job_name}'")
+    except Exception as e:
+        logger.error(f"An error occurred while triggering Rundeck job '{job_name}': {e}")
     
     return job_results
