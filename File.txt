@@ -1,17 +1,34 @@
-# Import the call_api function from rundeck_utils
-from modules.rundeck_utils import call_api
+import requests
 
-# Function to trigger deployment job for a given list of nodes and job details
-def trigger_job_for_nodes(nodes, job_name):
+# Function to authenticate with Rundeck and trigger deployment job for a given list of nodes and job details
+def trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url):
     job_results = []
+    
+    # Authenticate with Rundeck to get the session cookie
+    login_data = {
+        "j_username": username,
+        "j_password": password
+    }
+    try:
+        session = requests.Session()
+        response = session.post(f"{rundeck_url}/j_security_check", data=login_data)
+        response.raise_for_status()
+    except Exception as e:
+        logger.error(f"Error authenticating with Rundeck: {e}")
+        return job_results
+    
     for node in nodes:
         try:
-            response = call_api(node["url"], method='POST', headers={"X-Rundeck-Auth-Token": node["token"]})
-            response.raise_for_status()  # Raise an error for bad status codes
+            response = session.post(
+                node["url"], 
+                json={"job_name": job_name},
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
             
-            if "id" in response:
+            if "id" in response.json():
                 # If job was successfully triggered, get the execution ID
-                execution_id = response["id"]
+                execution_id = response.json()["id"]
                 
                 # Add the node's information along with the execution ID to the job results
                 job_results.append({
@@ -33,16 +50,22 @@ def trigger_deployment_job(rundeck_config, env_variables, build_type):
     if "RUNDECK_JOB" in env_variables and "RUNDECK_NODES" in env_variables:
         job_name = env_variables["RUNDECK_JOB"]
         nodes = env_variables["RUNDECK_NODES"].split(',')
-        job_results[''] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name)}
+        username = env_variables.get("RD_USR")
+        password = env_variables.get("RD_PASS")
+        rundeck_url = env_variables.get("RUNDECK_URL")
+        job_results[''] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url)}
                 
     elif rundeck_config:
         for env_name, env_details in rundeck_config.items():
             if env_name in env_variables.get("ENV_NAME", ""):
                 nodes = env_details.get(build_type, {}).get("nodes", [])
                 job_name = env_details.get(build_type, {}).get("job_name")
+                username = env_variables.get("RD_USR")
+                password = env_variables.get("RD_PASS")
+                rundeck_url = env_variables.get("RUNDECK_URL")
                 
                 # Call the function to trigger the job for the environment's nodes
-                job_results[env_name] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name)}
+                job_results[env_name] = {"job_name": job_name, "nodes": trigger_job_for_nodes(nodes, job_name, username, password, rundeck_url)}
     else:
         raise ValueError("No Rundeck configuration found.")
     
