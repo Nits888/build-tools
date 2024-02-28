@@ -1,3 +1,5 @@
+import os
+import json
 from modules.env_utils import read_properties_file, PROPERTIES_FILE_PATH, add_variables_to_properties_file
 from modules.request_utils import call_api
 from modules.custom_logger import setup_custom_logger
@@ -66,6 +68,62 @@ def perform_sonar_scan(env_variables):
         logger.warning("Sonar URL or API key not provided. Skipping Sonar scan.")
 
 
+def perform_sonar_iqs_scan(env_variables):
+    # Perform Sonar IQS scan using relevant environment variables
+    sonar_iqs_url = env_variables.get("SONAR_IQS_URL")
+    sonar_iqs_api_key = env_variables.get("SONAR_IQS_API_KEY")
+    if sonar_iqs_url and sonar_iqs_api_key:
+        logger.info("Performing Sonar IQS scan...")
+        # Execute Sonar IQS scan command
+        # Replace with actual command to run Sonar IQS scan
+        # Example command:
+        # cmd = "java -jar sonar-iqs.jar --api-key={}".format(sonar_iqs_api_key)
+        cmd = "java -jar sonar-iqs.jar --api-key={}".format(sonar_iqs_api_key)
+        response = os.system(cmd)
+        if response == 0:
+            # Check generated JSON report for vulnerabilities count
+            json_report = "sonar-iqs-report.json"
+            if os.path.exists(json_report):
+                with open(json_report, "r") as file:
+                    data = json.load(file)
+                    vulnerabilities_count = data.get("vulnerabilities", 0)
+                    # Adjust threshold as needed
+                    if vulnerabilities_count > 10:
+                        raise ValueError(f"Sonar IQS scan failed: Found {vulnerabilities_count} vulnerabilities.")
+                    else:
+                        logger.info("Sonar IQS scan completed successfully.")
+            else:
+                logger.error("Sonar IQS scan failed: JSON report file not found.")
+        else:
+            logger.error("Error performing Sonar IQS scan.")
+    else:
+        logger.warning("Sonar IQS URL or API key not provided. Skipping Sonar IQS scan.")
+
+
+def perform_sonarqube_code_quality_scan(env_variables):
+    # Perform SonarQube code quality scan using relevant environment variables
+    sonarqube_url = env_variables.get("SONARQUBE_URL")
+    sonarqube_api_key = env_variables.get("SONARQUBE_API_KEY")
+    if sonarqube_url and sonarqube_api_key:
+        logger.info("Performing SonarQube code quality scan...")
+        # Execute SonarQube code quality scan command
+        # Replace with actual command to run SonarQube scan
+        # Example command:
+        # cmd = "./sonarqube-scanner.sh -Dsonar.login={}".format(sonarqube_api_key)
+        cmd = "./sonarqube-scanner.sh -Dsonar.login={}".format(sonarqube_api_key)
+        response = os.system(cmd)
+        if response == 0:
+            # Check for SonarQube report file
+            if os.path.exists("sonarqube-report.txt"):
+                logger.info("SonarQube code quality scan completed successfully.")
+            else:
+                raise ValueError("SonarQube code quality scan failed: Report file not found.")
+        else:
+            logger.error("Error performing SonarQube code quality scan.")
+    else:
+        logger.warning("SonarQube URL or API key not provided. Skipping SonarQube code quality scan.")
+
+
 def main(main_scan_type):
     try:
         # Read environment variables from env.properties file
@@ -76,7 +134,9 @@ def main(main_scan_type):
             "SAST": perform_sast_scan,
             "DAST": perform_dast_scan,
             "SONAR": perform_sonar_scan,
-            "ALL": [perform_sast_scan, perform_dast_scan, perform_sonar_scan]
+            "SONARIQS": perform_sonar_iqs_scan,
+            "SONARQUBE": perform_sonarqube_code_quality_scan,
+            "ALL": [perform_sast_scan, perform_dast_scan, perform_sonar_scan, perform_sonar_iqs_scan, perform_sonarqube_code_quality_scan]
         }
 
         # Perform scans based on the specified type
@@ -97,3 +157,15 @@ def main(main_scan_type):
     except Exception as e:
         logger.exception(f"An error occurred during scans: {e}")
         exit(1)
+
+
+if __name__ == "__main__":
+    import sys
+
+    # Check if the script is called with the scan type parameter
+    if len(sys.argv) != 2:
+        print("Usage: python perform_scans.py [SCAN_TYPE]")
+        exit(1)
+
+    scan_type = sys.argv[1].upper()  # Convert scan type to uppercase
+    main(scan_type)
