@@ -1,196 +1,171 @@
 import os
 import json
-import time
-import requests
+from modules.env_utils import read_properties_file, PROPERTIES_FILE_PATH, add_variables_to_properties_file
+from modules.request_utils import call_api
+from modules.custom_logger import setup_custom_logger
 
 # Setup custom logger
 logger = setup_custom_logger(__name__)
 
-# Constants for Rundeck authentication
-RUNDECK_USERNAME = os.getenv("RD_USR")
-RUNDECK_PASSWORD = os.getenv("RD_PASS")
-RUNDECK_URL = os.getenv("RUNDECK_URL")
 
-def call_api(url, method='GET', params=None, data=None, headers=None):
-    """
-    Function to make an HTTP request to the specified URL using the given method.
-
-    Args:
-        url (str): The URL of the API endpoint.
-        method (str): The HTTP method to use (GET, POST, PUT, DELETE). Defaults to 'GET'.
-        params (dict): Optional dictionary of URL parameters.
-        data (dict): Optional dictionary of data to send in the request body (for POST and PUT requests).
-        headers (dict): Optional dictionary of request headers.
-
-    Returns:
-        dict: The JSON response received from the API, or None if an error occurs.
-    """
-    try:
-        response = requests.request(method, url, params=params, data=data, headers=headers)
-        response.raise_for_status()  # Raise an error for bad status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error calling API: {e}")
-        return None
-
-def determine_deploy_type():
-    """
-    Determine the deploy type based on the presence of specific files in the workspace directory.
-    You can customize this logic based on your project's requirements.
-    """
-    # Example: Check for the presence of pom.xml, package.json, etc.
-    if os.path.exists("pom.xml"):
-        return "maven"
-    elif os.path.exists("package.json"):
-        return "npm"
+def perform_sast_scan(env_variables):
+    # Perform SAST scan using relevant environment variables
+    sast_url = env_variables.get("SAST_URL")
+    sast_api_key = env_variables.get("SAST_API_KEY")
+    if sast_url and sast_api_key:
+        logger.info("Performing SAST scan...")
+        response = call_api(sast_url, method='POST', headers={"Authorization": f"Bearer {sast_api_key}"})
+        if response:
+            # Process response and store scan results
+            # Example:
+            # sast_result = process_sast_scan_response(response)
+            # return sast_result
+            logger.info("SAST scan completed successfully")
+            return response
+        else:
+            logger.error("Error performing SAST scan: No response received")
     else:
-        return "tar"
+        logger.warning("SAST URL or API key not provided. Skipping SAST scan.")
 
-def authenticate_with_rundeck(username, password, rundeck_url):
-    """
-    Authenticate with Rundeck and return the session object.
-    """
-    try:
-        session = requests.Session()
-        login_data = {
-            "j_username": username,
-            "j_password": password
-        }
-        response = session.post(f"{rundeck_url}/j_security_check", data=login_data)
-        response.raise_for_status()
-        return session
-    except Exception as e:
-        logger.error(f"Error authenticating with Rundeck: {e}")
-        return None
 
-def trigger_rundeck_job(session, job_id, argstring):
-    """
-    Trigger a Rundeck job with the provided job ID and arguments.
-    """
-    try:
-        response = session.post(
-            f"{RUNDECK_URL}/api/14/job/{job_id}/run",
-            json={"argString": argstring},
-            headers={"Content-Type": "application/json"}
-        )
-        response.raise_for_status()
-        job_execution_id = response.json().get("id")
-        return job_execution_id
-    except Exception as e:
-        logger.error(f"Error triggering Rundeck job: {e}")
-        return None
+def perform_dast_scan(env_variables):
+    # Perform DAST scan using relevant environment variables
+    dast_url = env_variables.get("DAST_URL")
+    dast_api_key = env_variables.get("DAST_API_KEY")
+    if dast_url and dast_api_key:
+        logger.info("Performing DAST scan...")
+        response = call_api(dast_url, method='POST', headers={"Authorization": f"Bearer {dast_api_key}"})
+        if response:
+            # Process response and store scan results
+            # Example:
+            # dast_result = process_dast_scan_response(response)
+            # return dast_result
+            logger.info("DAST scan completed successfully")
+            return response
+        else:
+            logger.error("Error performing DAST scan: No response received")
+    else:
+        logger.warning("DAST URL or API key not provided. Skipping DAST scan.")
 
-def check_job_status(session, job_execution_id):
-    """
-    Check the status of a Rundeck job execution.
-    """
-    try:
-        response = session.get(
-            f"{RUNDECK_URL}/api/14/execution/{job_execution_id}",
-            headers={"Content-Type": "application/json"}
-        )
-        response.raise_for_status()
-        job_status = response.json().get("status")
-        return job_status
-    except Exception as e:
-        logger.error(f"Error checking job status: {e}")
-        return None
 
-def main():
-    try:
-        # Determine the deploy type based on the files in the workspace directory
-        deploy_type = determine_deploy_type()
+def perform_sonar_scan(env_variables):
+    # Perform Sonar scan using relevant environment variables
+    sonar_url = env_variables.get("SONAR_URL")
+    sonar_api_key = env_variables.get("SONAR_API_KEY")
+    if sonar_url and sonar_api_key:
+        logger.info("Performing Sonar scan...")
+        response = call_api(sonar_url, method='POST', headers={"Authorization": f"Bearer {sonar_api_key}"})
+        if response:
+            # Process response and store scan results
+            # Example:
+            # sonar_result = process_sonar_scan_response(response)
+            # return sonar_result
+            logger.info("Sonar scan completed successfully")
+            return response
+        else:
+            logger.error("Error performing Sonar scan: No response received")
+    else:
+        logger.warning("Sonar URL or API key not provided. Skipping Sonar scan.")
 
-        # Load the JSON configuration file
-        with open("path/to/config.json", "r") as json_file:
-            config = json.load(json_file)
 
-        # Get the nodes and job mappings for the deploy type
-        deploy_config = config.get(deploy_type, {})
-        if not deploy_config:
-            logger.error("No configuration found for the deploy type.")
-            return
-
-        # Get the list of environments from the ENV_NAME variable
-        env_names = os.getenv("ENV_NAME", "").split(",")
-
-        # Authenticate with Rundeck
-        session = authenticate_with_rundeck(RUNDECK_USERNAME, RUNDECK_PASSWORD, RUNDECK_URL)
-        if not session:
-            logger.error("Failed to authenticate with Rundeck.")
-            return
-
-        for env_name in env_names:
-            env_config = deploy_config.get(env_name, {})
-            if not env_config:
-                logger.error(f"No configuration found for
-
-def main():
-    try:
-        # Determine the deploy type based on the files in the workspace directory
-        deploy_type = determine_deploy_type()
-
-        # Load the JSON configuration file
-        with open("path/to/config.json", "r") as json_file:
-            config = json.load(json_file)
-
-        # Get the nodes and job mappings for the deploy type
-        deploy_config = config.get(deploy_type, {})
-        if not deploy_config:
-            logger.error("No configuration found for the deploy type.")
-            return
-
-        # Get the list of environments from the ENV_NAME variable
-        env_names = os.getenv("ENV_NAME", "").split(",")
-
-        # Authenticate with Rundeck
-        session = authenticate_with_rundeck(RUNDECK_USERNAME, RUNDECK_PASSWORD, RUNDECK_URL)
-        if not session:
-            logger.error("Failed to authenticate with Rundeck.")
-            return
-
-        for env_name in env_names:
-            env_config = deploy_config.get(env_name, {})
-            if not env_config:
-                logger.error(f"No configuration found for environment: {env_name}")
-                continue
-
-            nodes = env_config.get("nodes", [])
-            job_name = env_config.get("job_name", "")
-
-            # Construct the argstring with all nodes for the job
-            argstring = ",".join([node["url"] for node in nodes])
-
-            # Trigger the Rundeck job for the environment
-            job_execution_id = trigger_rundeck_job(session, job_name, argstring)
-            if not job_execution_id:
-                logger.error(f"Failed to trigger job for environment: {env_name}")
-                continue
-
-            logger.info(f"Triggered Rundeck job '{job_name}' for environment '{env_name}'")
-
-            # Check the status of the triggered job
-            job_status = None
-            timeout = 600  # Timeout in seconds (10 minutes)
-            interval = 60   # Check status every 1 minute
-            while timeout > 0:
-                job_status = check_job_status(session, job_execution_id)
-                if job_status in ["running", "scheduled"]:
-                    logger.info(f"Job '{job_name}' in '{env_name}' is {job_status}, waiting...")
-                    time.sleep(interval)
-                    timeout -= interval
-                elif job_status == "succeeded":
-                    logger.info(f"Job '{job_name}' in '{env_name}' completed successfully.")
-                    break
-                else:
-                    logger.error(f"Job '{job_name}' in '{env_name}' failed or terminated.")
-                    break
+def perform_sonar_iqs_scan(env_variables):
+    # Perform Sonar IQS scan using relevant environment variables
+    sonar_iqs_url = env_variables.get("SONAR_IQS_URL")
+    sonar_iqs_api_key = env_variables.get("SONAR_IQS_API_KEY")
+    if sonar_iqs_url and sonar_iqs_api_key:
+        logger.info("Performing Sonar IQS scan...")
+        # Execute Sonar IQS scan command
+        # Replace with actual command to run Sonar IQS scan
+        # Example command:
+        # cmd = "java -jar sonar-iqs.jar --api-key={}".format(sonar_iqs_api_key)
+        cmd = "java -jar sonar-iqs.jar --api-key={}".format(sonar_iqs_api_key)
+        response = os.system(cmd)
+        if response == 0:
+            # Check generated JSON report for vulnerabilities count
+            json_report = "sonar-iqs-report.json"
+            if os.path.exists(json_report):
+                with open(json_report, "r") as file:
+                    data = json.load(file)
+                    vulnerabilities_count = data.get("vulnerabilities", 0)
+                    # Adjust threshold as needed
+                    if vulnerabilities_count > 10:
+                        raise ValueError(f"Sonar IQS scan failed: Found {vulnerabilities_count} vulnerabilities.")
+                    else:
+                        logger.info("Sonar IQS scan completed successfully.")
             else:
-                logger.error(f"Timeout exceeded while waiting for job '{job_name}' in '{env_name}'")
+                logger.error("Sonar IQS scan failed: JSON report file not found.")
+        else:
+            logger.error("Error performing Sonar IQS scan.")
+    else:
+        logger.warning("Sonar IQS URL or API key not provided. Skipping Sonar IQS scan.")
+
+
+def perform_sonarqube_code_quality_scan(env_variables):
+    # Perform SonarQube code quality scan using relevant environment variables
+    sonarqube_url = env_variables.get("SONARQUBE_URL")
+    sonarqube_api_key = env_variables.get("SONARQUBE_API_KEY")
+    if sonarqube_url and sonarqube_api_key:
+        logger.info("Performing SonarQube code quality scan...")
+        # Execute SonarQube code quality scan command
+        # Replace with actual command to run SonarQube scan
+        # Example command:
+        # cmd = "./sonarqube-scanner.sh -Dsonar.login={}".format(sonarqube_api_key)
+        cmd = "./sonarqube-scanner.sh -Dsonar.login={}".format(sonarqube_api_key)
+        response = os.system(cmd)
+        if response == 0:
+            # Check for SonarQube report file
+            if os.path.exists("sonarqube-report.txt"):
+                logger.info("SonarQube code quality scan completed successfully.")
+            else:
+                raise ValueError("SonarQube code quality scan failed: Report file not found.")
+        else:
+            logger.error("Error performing SonarQube code quality scan.")
+    else:
+        logger.warning("SonarQube URL or API key not provided. Skipping SonarQube code quality scan.")
+
+
+def main(main_scan_type):
+    try:
+        # Read environment variables from env.properties file
+        env_variables = read_properties_file(PROPERTIES_FILE_PATH)
+
+        # Initialize scan result variables
+        scan_functions = {
+            "SAST": perform_sast_scan,
+            "DAST": perform_dast_scan,
+            "SONAR": perform_sonar_scan,
+            "SONARIQS": perform_sonar_iqs_scan,
+            "SONARQUBE": perform_sonarqube_code_quality_scan,
+            "ALL": [perform_sast_scan, perform_dast_scan, perform_sonar_scan, perform_sonar_iqs_scan, perform_sonarqube_code_quality_scan]
+        }
+
+        # Perform scans based on the specified type
+        results = {}
+        for scan_type, scan_function in scan_functions.items():
+            if main_scan_type == scan_type or main_scan_type == "ALL":
+                if isinstance(scan_function, list):
+                    for func in scan_function:
+                        results[scan_type.lower()] = func(env_variables)
+                else:
+                    results[scan_type.lower()] = scan_function(env_variables)
+
+        # Add scan results to the properties file
+        add_variables_to_properties_file(results, PROPERTIES_FILE_PATH)
+
+        logger.info("Scans performed successfully")
 
     except Exception as e:
-        logger.exception(f"An error occurred during code deployment: {e}")
+        logger.exception(f"An error occurred during scans: {e}")
         exit(1)
 
+
 if __name__ == "__main__":
-    main()
+    import sys
+
+    # Check if the script is called with the scan type parameter
+    if len(sys.argv) != 2:
+        print("Usage: python perform_scans.py [SCAN_TYPE]")
+        exit(1)
+
+    scan_type = sys.argv[1].upper()  # Convert scan type to uppercase
+    main(scan_type)
