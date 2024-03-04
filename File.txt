@@ -1,20 +1,31 @@
-# Sample JSON data
-response_json = {'workflows': [{'name': '{{config_name}}', 'id': 123, 'url': 'https://abc.com'},
-                               {'name': 'xyz', 'id': 456, 'url': 'https://xyz.com'}]}
+import os
 
-# Variable with the name to search for
-config_name = 'abc'
+def grant_execute_permission(filename):
+    """
+    Grant execute permission for the current user to the specified file.
+    
+    Parameters:
+        filename (str): The name of the file to grant execute permission.
+        
+    Returns:
+        bool: True if the permission was successfully granted, False otherwise.
+    """
+    try:
+        # Get the current file permissions
+        current_permissions = os.stat(filename).st_mode
+        
+        # Add the execute permission for the owner
+        new_permissions = current_permissions | 0o100
+        
+        # Set the new permissions for the file
+        os.chmod(filename, new_permissions)
+        
+        print(f"Execute permission granted for {filename} to the current user.")
+        return True
+    except Exception as e:
+        print(f"Error granting execute permission for {filename}: {e}")
+        return False
 
-# Function to replace placeholders in JSON data with values from the current scope
-def replace_placeholders(json_data, current_scope):
-    for key, value in json_data.items():
-        if isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
-            variable_name = value[2:-2]
-            if variable_name in current_scope:
-                json_data[key] = current_scope[variable_name]
-    return json_data
-
-# Replace placeholders in JSON data with values from the current scope
-updated_json = replace_placeholders(response_json, locals())
-
-print(updated_json)
+# Example Usage
+filename = "your_file_to_grant_permission"
+grant_execute_permission(filename)
