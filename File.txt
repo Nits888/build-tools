@@ -1,31 +1,38 @@
-import os
-
-def grant_execute_permission(filename):
+def fetch_value_for_key(file_path, key):
     """
-    Grant execute permission for the current user to the specified file.
-    
+    Read a file containing key-value pairs and fetch the value for a specific key.
+
     Parameters:
-        filename (str): The name of the file to grant execute permission.
-        
+        file_path (str): The path to the file containing key-value pairs.
+        key (str): The key whose value needs to be fetched.
+
     Returns:
-        bool: True if the permission was successfully granted, False otherwise.
+        str: The value corresponding to the specified key, or None if key is not found.
     """
     try:
-        # Get the current file permissions
-        current_permissions = os.stat(filename).st_mode
-        
-        # Add the execute permission for the owner
-        new_permissions = current_permissions | 0o100
-        
-        # Set the new permissions for the file
-        os.chmod(filename, new_permissions)
-        
-        print(f"Execute permission granted for {filename} to the current user.")
-        return True
+        with open(file_path, 'r') as file:
+            for line in file:
+                # Split each line into key and value
+                parts = line.strip().split('=')
+                
+                # Check if the line has key-value pair
+                if len(parts) == 2:
+                    k, v = parts
+                    # If key matches, return the value
+                    if k.strip() == key:
+                        return v.strip()
+            # Key not found
+            return None
     except Exception as e:
-        print(f"Error granting execute permission for {filename}: {e}")
-        return False
+        print(f"Error reading file: {e}")
+        return None
 
 # Example Usage
-filename = "your_file_to_grant_permission"
-grant_execute_permission(filename)
+file_path = "config.txt"
+key = "Url"
+value = fetch_value_for_key(file_path, key)
+
+if value is not None:
+    print(f"Value for key '{key}': {value}")
+else:
+    print(f"Key '{key}' not found in the file.")
