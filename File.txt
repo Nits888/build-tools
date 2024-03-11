@@ -1,38 +1,14 @@
-def fetch_value_for_key(file_path, key):
-    """
-    Read a file containing key-value pairs and fetch the value for a specific key.
-
-    Parameters:
-        file_path (str): The path to the file containing key-value pairs.
-        key (str): The key whose value needs to be fetched.
-
-    Returns:
-        str: The value corresponding to the specified key, or None if key is not found.
-    """
-    try:
-        with open(file_path, 'r') as file:
-            for line in file:
-                # Split each line into key and value
-                parts = line.strip().split('=')
-                
-                # Check if the line has key-value pair
-                if len(parts) == 2:
-                    k, v = parts
-                    # If key matches, return the value
-                    if k.strip() == key:
-                        return v.strip()
-            # Key not found
-            return None
-    except Exception as e:
-        print(f"Error reading file: {e}")
-        return None
-
-# Example Usage
-file_path = "config.txt"
-key = "Url"
-value = fetch_value_for_key(file_path, key)
-
-if value is not None:
-    print(f"Value for key '{key}': {value}")
-else:
-    print(f"Key '{key}' not found in the file.")
+# Function to replace placeholders in JSON data with values from the current scope
+def replace_placeholders(json_data, current_scope):
+    if isinstance(json_data, dict):
+        for key, value in json_data.items():
+            if isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
+                variable_name = value[2:-2]
+                if variable_name in current_scope:
+                    json_data[key] = current_scope[variable_name]
+            elif isinstance(value, (dict, list)):
+                replace_placeholders(value, current_scope)
+    elif isinstance(json_data, list):
+        for i in range(len(json_data)):
+            replace_placeholders(json_data[i], current_scope)
+    return json_data
