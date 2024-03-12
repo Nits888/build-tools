@@ -1,14 +1,15 @@
-# Function to replace placeholders in JSON data with values from the current scope
-def replace_placeholders(json_data, current_scope):
+def replace_placeholders(json_data, current_scope, env_variables):
     if isinstance(json_data, dict):
         for key, value in json_data.items():
             if isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
                 variable_name = value[2:-2]
                 if variable_name in current_scope:
                     json_data[key] = current_scope[variable_name]
+                elif variable_name in env_variables:
+                    json_data[key] = env_variables[variable_name]
             elif isinstance(value, (dict, list)):
-                replace_placeholders(value, current_scope)
+                replace_placeholders(value, current_scope, env_variables)
     elif isinstance(json_data, list):
         for i in range(len(json_data)):
-            replace_placeholders(json_data[i], current_scope)
+            replace_placeholders(json_data[i], current_scope, env_variables)
     return json_data
