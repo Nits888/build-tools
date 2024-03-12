@@ -1,12 +1,17 @@
 def replace_placeholders(json_data, current_scope, env_variables):
     if isinstance(json_data, dict):
         for key, value in json_data.items():
-            if isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
-                variable_name = value[2:-2]
-                if variable_name in current_scope:
-                    json_data[key] = current_scope[variable_name]
-                elif variable_name in env_variables:
-                    json_data[key] = env_variables[variable_name]
+            if isinstance(value, str):
+                # Find all placeholders in the value
+                placeholders = re.findall(r"\{{(.*?)\}}", value)
+                for placeholder in placeholders:
+                    if placeholder.strip() in current_scope:
+                        # Replace the placeholder with the value from current_scope
+                        value = value.replace("{{" + placeholder + "}}", str(current_scope[placeholder.strip()]))
+                    elif placeholder.strip() in env_variables:
+                        # Replace the placeholder with the value from env_variables
+                        value = value.replace("{{" + placeholder + "}}", str(env_variables[placeholder.strip()]))
+                json_data[key] = value
             elif isinstance(value, (dict, list)):
                 replace_placeholders(value, current_scope, env_variables)
     elif isinstance(json_data, list):
