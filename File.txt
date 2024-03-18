@@ -1,20 +1,19 @@
-def replace_placeholders(json_data, current_scope, env_variables):
-    if isinstance(json_data, dict):
-        for key, value in json_data.items():
-            if isinstance(value, str):
-                # Find all placeholders in the value
-                placeholders = re.findall(r"\{{(.*?)\}}", value)
-                for placeholder in placeholders:
-                    if placeholder.strip() in current_scope:
-                        # Replace the placeholder with the value from current_scope
-                        value = value.replace("{{" + placeholder + "}}", str(current_scope[placeholder.strip()]))
-                    elif placeholder.strip() in env_variables:
-                        # Replace the placeholder with the value from env_variables
-                        value = value.replace("{{" + placeholder + "}}", str(env_variables[placeholder.strip()]))
-                json_data[key] = value
-            elif isinstance(value, (dict, list)):
-                replace_placeholders(value, current_scope, env_variables)
-    elif isinstance(json_data, list):
-        for i in range(len(json_data)):
-            replace_placeholders(json_data[i], current_scope, env_variables)
-    return json_data
+def fetch_git_info(repo_path):
+    """Fetches pull request and release information using GitPython."""
+    repo = git.Repo(repo_path)
+    
+    # Get the latest pull request number
+    git_pull_request = repo.git.fetch("origin", "pulls")
+    git_pull_request = repo.git.show_ref("--head", "--heads", "origin/pulls")
+    git_pull_request = re.search(r"refs/pull/(\d+)/head", git_pull_request).group(1)
+    
+    # Get the latest release version
+    git_release_version = repo.git.tag("--sort=-v:refname").splitlines()[0]
+    
+    # Get the URL of the pull request
+    git_pull_request_url = f"{GIT_BASE_URL}/pull/{git_pull_request}"
+    
+    # Get the URL of the latest release
+    git_release_url = f"{GIT_BASE_URL}/releases/tag/{git_release_version}"
+    
+    return git_pull_request_url, git_release_url, git_release_version
