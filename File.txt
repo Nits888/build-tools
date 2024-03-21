@@ -1,22 +1,71 @@
-def fetch_git_info(repo_path):
-    """Fetches pull request, user ID, release information using GitPython."""
-    repo = git.Repo(repo_path)
-    
-    # Get the latest pull request number
-    git_pull_request = repo.git.fetch("origin", "pulls")
-    git_pull_request = repo.git.show_ref("--head", "--heads", "origin/pulls")
-    git_pull_request = re.search(r"refs/pull/(\d+)/head", git_pull_request).group(1)
-    
-    # Get the user ID associated with the pull request
-    git_user_id = repo.git.log("-1", "--pretty=format:%an", f"origin/pull/{git_pull_request}")
-    
-    # Get the latest release version
-    git_release_version = repo.git.tag("--sort=-v:refname").splitlines()[0]
-    
-    # Get the URL of the pull request
-    git_pull_request_url = f"{GIT_BASE_URL}/pull/{git_pull_request}"
-    
-    # Get the URL of the latest release
-    git_release_url = f"{GIT_BASE_URL}/releases/tag/{git_release_version}"
-    
-    return git_pull_request_url, git_user_id, git_release_url, git_release_version
+import os
+import json
+
+# List of modified files (replace this with your actual list)
+modified_files = [
+    "Inventory/Env/server.json",
+    "software/software1/env1/server.json",
+    "software/software2/env2/server.json"
+]
+
+def trigger_job_for_new_server(server_file):
+    # Your code to trigger a job for a new server
+    print(f"Triggering job for new server: {server_file}")
+
+def trigger_job_for_updated_server(server_file):
+    # Your code to trigger a job for an updated server
+    print(f"Triggering job for updated server: {server_file}")
+
+def trigger_job_for_new_software(software_file):
+    # Your code to trigger a job for new software
+    print(f"Triggering job for new software: {software_file}")
+
+def process_modified_files(modified_files):
+    for file_path in modified_files:
+        # Split the file path to get the components
+        file_components = file_path.split(os.sep)
+
+        if len(file_components) >= 3:
+            inventory_type = file_components[0]
+            if inventory_type == "Inventory":
+                # Check if it's an inventory file
+                env_name = file_components[1]
+                if "server.json" in file_components[-1]:
+                    # Check if it's a server.json file in the inventory
+                    if os.path.exists(file_path):
+                        with open(file_path, "r") as f:
+                            server_data = json.load(f)
+                            if "hostname" in server_data:
+                                # Assuming the presence of "hostname" in server.json
+                                # Trigger job for new server if hostname is not present in data
+                                if "hostname" not in server_data:
+                                    trigger_job_for_new_server(file_path)
+                                else:
+                                    # Trigger job for updated server if needed
+                                    trigger_job_for_updated_server(file_path)
+                    else:
+                        print(f"File not found: {file_path}")
+            elif inventory_type == "software":
+                # Check if it's a software inventory file
+                if len(file_components) >= 4:
+                    software_name = file_components[1]
+                    env_name = file_components[2]
+                    if "server.json" in file_components[-1]:
+                        # Check if it's a server.json file in the software inventory
+                        if os.path.exists(file_path):
+                            with open(file_path, "r") as f:
+                                server_data = json.load(f)
+                                if "hostname" in server_data:
+                                    # Assuming the presence of "hostname" in server.json
+                                    # Trigger job for new software if hostname is not present in data
+                                    if "hostname" not in server_data:
+                                        trigger_job_for_new_software(file_path)
+                    else:
+                        print(f"File not found: {file_path}")
+            else:
+                print(f"Invalid inventory type: {inventory_type}")
+        else:
+            print(f"Invalid file path: {file_path}")
+
+# Process the list of modified files
+process_modified_files(modified_files)
