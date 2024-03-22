@@ -1,71 +1,46 @@
-import os
-import json
+import requests
+import logging
 
-# List of modified files (replace this with your actual list)
-modified_files = [
-    "Inventory/Env/server.json",
-    "software/software1/env1/server.json",
-    "software/software2/env2/server.json"
-]
+logger = logging.getLogger(__name__)
 
-def trigger_job_for_new_server(server_file):
-    # Your code to trigger a job for a new server
-    print(f"Triggering job for new server: {server_file}")
+def call_api(url, method='GET', params=None, data=None, headers=None):
+    """
+    Function to make an HTTP request to the specified URL using the given method.
 
-def trigger_job_for_updated_server(server_file):
-    # Your code to trigger a job for an updated server
-    print(f"Triggering job for updated server: {server_file}")
+    Args:
+        url (str): The URL of the API endpoint.
+        method (str): The HTTP method to use (GET, POST, PUT, DELETE). Defaults to 'GET'.
+        params (dict): Optional dictionary of URL parameters.
+        data (dict): Optional dictionary of data to send in the request body (for POST and PUT requests).
+        headers (dict): Optional dictionary of request headers.
 
-def trigger_job_for_new_software(software_file):
-    # Your code to trigger a job for new software
-    print(f"Triggering job for new software: {software_file}")
+    Returns:
+        dict: The JSON response received from the API.
 
-def process_modified_files(modified_files):
-    for file_path in modified_files:
-        # Split the file path to get the components
-        file_components = file_path.split(os.sep)
+    Raises:
+        Exception: If the API request fails or returns an error status code.
+    """
+    try:
+        response = requests.request(method, url, params=params, data=data, headers=headers)
+        response.raise_for_status()  # Raise an error for bad status codes
+        
+        if response.status_code == 204:
+            return None
+        
+        return response.json()
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling API: {e}")
+        raise Exception("Failed to connect to the API.")
 
-        if len(file_components) >= 3:
-            inventory_type = file_components[0]
-            if inventory_type == "Inventory":
-                # Check if it's an inventory file
-                env_name = file_components[1]
-                if "server.json" in file_components[-1]:
-                    # Check if it's a server.json file in the inventory
-                    if os.path.exists(file_path):
-                        with open(file_path, "r") as f:
-                            server_data = json.load(f)
-                            if "hostname" in server_data:
-                                # Assuming the presence of "hostname" in server.json
-                                # Trigger job for new server if hostname is not present in data
-                                if "hostname" not in server_data:
-                                    trigger_job_for_new_server(file_path)
-                                else:
-                                    # Trigger job for updated server if needed
-                                    trigger_job_for_updated_server(file_path)
-                    else:
-                        print(f"File not found: {file_path}")
-            elif inventory_type == "software":
-                # Check if it's a software inventory file
-                if len(file_components) >= 4:
-                    software_name = file_components[1]
-                    env_name = file_components[2]
-                    if "server.json" in file_components[-1]:
-                        # Check if it's a server.json file in the software inventory
-                        if os.path.exists(file_path):
-                            with open(file_path, "r") as f:
-                                server_data = json.load(f)
-                                if "hostname" in server_data:
-                                    # Assuming the presence of "hostname" in server.json
-                                    # Trigger job for new software if hostname is not present in data
-                                    if "hostname" not in server_data:
-                                        trigger_job_for_new_software(file_path)
-                    else:
-                        print(f"File not found: {file_path}")
-            else:
-                print(f"Invalid inventory type: {inventory_type}")
-        else:
-            print(f"Invalid file path: {file_path}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON response: {e}")
+        raise Exception("Failed to parse JSON response from the API.")
 
-# Process the list of modified files
-process_modified_files(modified_files)
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error occurred: {e}")
+        raise Exception(f"HTTP error occurred: {e}")
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        raise Exception("An unexpected error occurred while calling the API.")
