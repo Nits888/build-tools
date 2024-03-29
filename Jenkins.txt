@@ -1,51 +1,52 @@
-#!/bin/bash
-
-# Function to get list of versions for an artifact from Nexus Repository
-get_versions() {
-  NEXUS_URL="http://your-nexus-url/repository"
-  REPO_NAME="your-repository-name"
-  GROUP_ID="com.example"
-  ARTIFACT_ID="your-artifact-id"
-
-  # Get list of versions using Nexus Repository Manager API
-  API_URL="${NEXUS_URL}/${REPO_NAME}/service/rest/v1/search/assets?group=${GROUP_ID}&name=${ARTIFACT_ID}"
-  VERSIONS=$(curl -s "${API_URL}" | jq -r '.items[].version' | sort -rV)
-
-  # Output versions
-  echo "${VERSIONS}"
+pipeline {
+    agent any
+    
+    environment {
+        NEXUS_URL = "http://your-nexus-url/repository"
+        REPO_NAME = "your-repository-name"
+        GROUP_ID = "com.example"
+        ARTIFACT_ID = "your-artifact-id"
+    }
+    
+    stages {
+        stage('Get Artifact Versions') {
+            steps {
+                script {
+                    // Function to get list of versions for an artifact from Nexus Repository
+                    def getVersions() {
+                        def apiUrl = "${NEXUS_URL}/${REPO_NAME}/service/rest/v1/search/assets?group=${GROUP_ID}&name=${ARTIFACT_ID}"
+                        def versions = sh(script: "curl -s -u ${env.NEXUS_USERNAME}:${env.NEXUS_PASSWORD} ${apiUrl} | grep -o '\"version\".*' | cut -d'\"' -f4 | sort -rV", returnStdout: true).trim().split('\n')
+                        return versions
+                    }
+                    
+                    // Get list of versions
+                    def versionOptions = getVersions()
+                    
+                    // Display versions as options in Jenkins input
+                    echo "Available versions:"
+                    for (def version in versionOptions) {
+                        echo "- ${version}"
+                    }
+                    
+                    // Prompt user to select a version
+                    def userInput = input(
+                        id: 'userInput',
+                        message: 'Please select a version',
+                        parameters: [
+                            choice(name: 'VERSION_SELECTED', choices: versionOptions)
+                        ]
+                    )
+                    
+                    def selectedVersion = userInput.VERSION_SELECTED
+                    echo "You selected: ${selectedVersion}"
+                    
+                    // Add your download logic here
+                    // sh "./download.sh ${selectedVersion}"
+                    
+                    // Add your upload logic here
+                    // sh "./upload.sh ${selectedVersion}"
+                }
+            }
+        }
+    }
 }
-
-# Get list of versions
-versions=$(get_versions)
-
-# Display versions as options in Jenkins job
-IFS=$'\n'       # Set delimiter to newline
-VERSION_OPTIONS=($versions)
-unset IFS       # Reset delimiter
-
-echo "Available versions:"
-for version in "${VERSION_OPTIONS[@]}"
-do
-  echo "- ${version}"
-done
-
-# Jenkins parameter definition for selecting version
-echo "Please select a version:"
-select VERSION_SELECTED in "${VERSION_OPTIONS[@]}"
-do
-  if [ -n "${VERSION_SELECTED}" ]; then
-    echo "You selected: ${VERSION_SELECTED}"
-
-    # Download the selected artifact from Nexus
-    echo "Downloading ${VERSION_SELECTED}..."
-    # Add your download logic here
-
-    # Upload to a different Nexus repository
-    echo "Uploading to a different Nexus repository..."
-    # Add your upload logic here
-
-    break
-  else
-    echo "Invalid selection. Please try again."
-  fi
-done
