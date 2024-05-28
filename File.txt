@@ -8,29 +8,37 @@ call_function() {
     local category=$1
     local key=$2
 
-    # Using awk to parse the JSON-like structure
+    # Using awk to parse the JSON-like structure with debugging
     awk -v cat="$category" -v k="$key" '
     BEGIN { foundCat = 0; }
     {
-        # Remove spaces and quotes for easier matching
-        gsub(/ /, "")
-        gsub(/"/, "")
+        # Remove leading and trailing spaces and quotes for easier matching
+        gsub(/^[ \t"]+|[ \t",]+$/, "")
+
+        # Print the current line for debugging
+        print "Processing line:", $0 > "/dev/stderr"
 
         # Match category
         if ($0 ~ cat ":\\{") {
+            print "Found category:", cat > "/dev/stderr"
             foundCat = 1
+            next
         }
 
         # If category is found and we match the key, print the value
-        if (foundCat && $1 == k ":") {
-            # Remove trailing comma and print the value
-            gsub(/,/, "", $2)
-            print $2
+        if (foundCat && $0 ~ k ":") {
+            # Extract the value part and clean it
+            match($0, k ":([^}]+)", arr)
+            value = arr[1]
+            gsub(/,/, "", value)
+            print "Found key:", k, "with value:", value > "/dev/stderr"
+            print value
             exit
         }
 
-        # If we find another category, stop looking
+        # If we find another category or the end of the current category, stop looking
         if (foundCat && $0 ~ "\\}") {
+            print "End of category:", cat > "/dev/stderr"
             foundCat = 0
         }
     }
