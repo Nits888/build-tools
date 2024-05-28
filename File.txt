@@ -1,62 +1,48 @@
 #!/bin/bash
 
-# Check if JSON file is provided as argument
-if [ -z "$1" ]; then
-    echo "Usage: $0 <json_file>"
-    exit 1
-fi
+# Path to the JSON configuration file
+CONFIG_FILE="config.json"
 
-# Check if the JSON file exists
-if [ ! -f "$1" ]; then
-    echo "File not found: $1"
-    exit 1
-fi
+# Function to get values from the JSON file
+call_function() {
+    local category=$1
+    local key=$2
 
-# Read the JSON file and loop through each entry
-while IFS=':' read -r file target || [[ -n "$file" ]]; do
-    # Remove leading and trailing whitespace
-    file=$(echo "$file" | sed 's/^[ \t]*//;s/[ \t]*$//')
-    target=$(echo "$target" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    # Using awk to parse the JSON-like structure
+    awk -v cat="$category" -v k="$key" '
+    BEGIN { foundCat = 0; }
+    {
+        # Remove spaces and quotes for easier matching
+        gsub(/ /, "")
+        gsub(/"/, "")
 
-    # Check if the file exists in the source directory
-    if [ ! -f "$file" ]; then
-        echo "File not found: $file"
-    else
-        # Copy the file to the target directory
-        cp "$file" "$target/"
-        echo "Copied $file to $target/"
-    fi
-done < "$1"
+        # Match category
+        if ($0 ~ cat ":\\{") {
+            foundCat = 1
+        }
 
-≈===///=/=
+        # If category is found and we match the key, print the value
+        if (foundCat && $1 == k ":") {
+            # Remove trailing comma and print the value
+            gsub(/,/, "", $2)
+            print $2
+            exit
+        }
 
-#!/bin/bash
-
-# Function to replace placeholders in a file with environment variables
-replace_placeholders() {
-    if [ -z "$1" ]; then
-        echo "Usage: replace_placeholders <file_path>"
-        return 1
-    fi
-
-    if [ ! -f "$1" ]; then
-        echo "File not found: $1"
-        return 1
-    fi
-
-    content=$(<"$1")
-
-    for var in $(env); do
-        key=$(echo "$var" | cut -d'=' -f1)
-        value=$(echo "$var" | cut -d'=' -f2)
-        content=${content//\{\{$key\}\}/$value}
-    done
-
-    echo "$content" > "$1"
-    echo "Placeholders replaced in $1"
+        # If we find another category, stop looking
+        if (foundCat && $0 ~ "\\}") {
+            foundCat = 0
+        }
+    }
+    ' "$CONFIG_FILE"
 }
 
-# Function to perform some other common task
-some_other_task() {
-    echo "This is another common task"
-}
+# Example usage:
+# call_function hosts Dev
+# call_function Ports Node
+# call_function fqdn Dev
+
+# To test the function, uncomment the lines below:
+# echo $(call_function hosts Dev)
+# echo $(call_function Ports Node)
+# echo $(call_function fqdn Dev)
