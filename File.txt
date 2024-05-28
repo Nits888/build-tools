@@ -12,25 +12,24 @@ call_function() {
     awk -v cat="$category" -v k="$key" '
     BEGIN { foundCat = 0; }
     {
-        # Remove leading and trailing spaces and quotes for easier matching
-        gsub(/^[ \t"]+|[ \t",]+$/, "")
+        # Remove leading and trailing spaces for easier matching
+        gsub(/^[ \t]+|[ \t]+$/, "")
 
         # Print the current line for debugging
         print "Processing line:", $0 > "/dev/stderr"
 
         # Match category
-        if ($0 ~ cat ":\\{") {
+        if ($0 ~ "\"" cat "\"[ \t]*:[ \t]*\\{") {
             print "Found category:", cat > "/dev/stderr"
             foundCat = 1
             next
         }
 
         # If category is found and we match the key, print the value
-        if (foundCat && $0 ~ k ":") {
+        if (foundCat && $0 ~ "\"" k "\"[ \t]*:") {
             # Extract the value part and clean it
-            match($0, k ":([^}]+)", arr)
+            match($0, "\"" k "\"[ \t]*:[ \t]*\"?([^\",}]+)\"?", arr)
             value = arr[1]
-            gsub(/,/, "", value)
             print "Found key:", k, "with value:", value > "/dev/stderr"
             print value
             exit
