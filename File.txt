@@ -28,9 +28,10 @@ call_function() {
         # If category is found and we match the key, print the value
         if (foundCat && $0 ~ "\"" k "\"[ \t]*:") {
             # Extract the value part and clean it
-            match($0, "\"" k "\"[ \t]*:[ \t]*\"?([^\",}]+)\"?", arr)
+            match($0, "\"" k "\"[ \t]*:[ \t]*\"([^\"]+)\"", arr)
             value = arr[1]
             print "Found key:", k, "with value:", value > "/dev/stderr"
+            gsub(/, /, "\n", value)  # Replace comma followed by space with newline
             print value
             exit
         }
@@ -50,6 +51,6 @@ call_function() {
 # call_function fqdn Dev
 
 # To test the function, uncomment the lines below:
-# echo $(call_function hosts Dev)
+# echo -e "$(call_function hosts Dev)"
 # echo $(call_function Ports Node)
 # echo $(call_function fqdn Dev)
