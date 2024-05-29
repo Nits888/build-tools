@@ -1,56 +1,36 @@
-#!/bin/bash
+REPLACE_PLACEHOLDERS() {
+    if [ -z "$1" ]; then
+        echo "Usage: REPLACE_PLACEHOLDERS <file_path>"
+        exit 1
+    fi
 
-# Path to the JSON configuration file
-CONFIG_FILE="config.json"
+    local PL_FILE_NAME="$1"
 
-# Function to get values from the JSON file
-call_function() {
-    local category=$1
-    local key=$2
+    if [ ! -f "$PL_FILE_NAME" ]; then
+        echo "File not found: $PL_FILE_NAME"
+        exit 1
+    fi
 
-    # Using awk to parse the JSON-like structure with debugging
-    awk -v cat="$category" -v k="$key" '
-    BEGIN { foundCat = 0; }
-    {
-        # Remove leading and trailing spaces for easier matching
-        gsub(/^[ \t]+|[ \t]+$/, "")
+    content=$(<"$PL_FILE_NAME")
 
-        # Print the current line for debugging
-        print "Processing line:", $0 > "/dev/stderr"
+    # Extract placeholders from the file
+    placeholders=$(grep -oP '\{\{\K[^}]+(?=\}\})' "$PL_FILE_NAME" | sort -u)
 
-        # Match category
-        if ($0 ~ "\"" cat "\"[ \t]*:[ \t]*\\{") {
-            print "Found category:", cat > "/dev/stderr"
-            foundCat = 1
-            next
-        }
+    for placeholder in $placeholders; do
+        if [ -z "${!placeholder}" ]; then
+            echo "Error: Environment variable '$placeholder' is not set."
+            exit 1
+        fi
+        value="${!placeholder}"
+        content="${content//\{\{$placeholder\}\}/$value}"
+    done
 
-        # If category is found and we match the key, print the value
-        if (foundCat && $0 ~ "\"" k "\"[ \t]*:") {
-            # Extract the value part and clean it
-            match($0, "\"" k "\"[ \t]*:[ \t]*\"([^\"]+)\"", arr)
-            value = arr[1]
-            print "Found key:", k, "with value:", value > "/dev/stderr"
-            gsub(/, /, "\n", value)  # Replace comma followed by space with newline
-            print value
-            exit
-        }
+    # Check if any placeholders are left
+    if grep -q '{{.*}}' <<< "$content"; then
+        echo "Error: Not all placeholders were replaced."
+        exit 1
+    fi
 
-        # If we find another category or the end of the current category, stop looking
-        if (foundCat && $0 ~ "\\}") {
-            print "End of category:", cat > "/dev/stderr"
-            foundCat = 0
-        }
-    }
-    ' "$CONFIG_FILE"
+    echo "$content" > "$PL_FILE_NAME"
+    echo "Placeholders replaced in $PL_FILE_NAME"
 }
-
-# Example usage:
-# call_function hosts Dev
-# call_function Ports Node
-# call_function fqdn Dev
-
-# To test the function, uncomment the lines below:
-# echo -e "$(call_function hosts Dev)"
-# echo $(call_function Ports Node)
-# echo $(call_function fqdn Dev)
