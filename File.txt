@@ -1,36 +1,30 @@
-REPLACE_PLACEHOLDERS() {
-    if [ -z "$1" ]; then
-        echo "Usage: REPLACE_PLACEHOLDERS <file_path>"
-        exit 1
-    fi
+import boto3
+from botocore.client import Config
 
-    local PL_FILE_NAME="$1"
+# Replace with your EMC S3 credentials and endpoint
+access_key = 'your_access_key'
+secret_key = 'your_secret_key'
+endpoint_url = 'https://your_emc_s3_endpoint'
 
-    if [ ! -f "$PL_FILE_NAME" ]; then
-        echo "File not found: $PL_FILE_NAME"
-        exit 1
-    fi
+# Create a session and S3 client with custom endpoint
+session = boto3.session.Session()
+s3_client = session.client(
+    's3',
+    aws_access_key_id=access_key,
+    aws_secret_access_key=secret_key,
+    endpoint_url=endpoint_url,
+    config=Config(signature_version='s3v4')  # Ensure compatibility with S3 API
+)
 
-    content=$(<"$PL_FILE_NAME")
+# Specify the bucket name
+bucket_name = 'your_bucket_name'
 
-    # Extract placeholders from the file
-    placeholders=$(grep -oP '\{\{\K[^}]+(?=\}\})' "$PL_FILE_NAME" | sort -u)
+# List objects in the bucket
+response = s3_client.list_objects_v2(Bucket=bucket_name)
 
-    for placeholder in $placeholders; do
-        if [ -z "${!placeholder}" ]; then
-            echo "Error: Environment variable '$placeholder' is not set."
-            exit 1
-        fi
-        value="${!placeholder}"
-        content="${content//\{\{$placeholder\}\}/$value}"
-    done
-
-    # Check if any placeholders are left
-    if grep -q '{{.*}}' <<< "$content"; then
-        echo "Error: Not all placeholders were replaced."
-        exit 1
-    fi
-
-    echo "$content" > "$PL_FILE_NAME"
-    echo "Placeholders replaced in $PL_FILE_NAME"
-}
+# Print the list of objects
+if 'Contents' in response:
+    for obj in response['Contents']:
+        print(obj['Key'])
+else:
+    print('No objects found in the bucket.')
