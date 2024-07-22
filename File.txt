@@ -1,37 +1,64 @@
-Certainly! Here’s a comprehensive table that summarizes the comparison between Geneos and Grafana across various aspects, including IBM MQ monitoring and alerting:
+// MyComponent.tsx
 
-| **Category**                | **Geneos**                                                                                  | **Grafana**                                                                                  |
-|-----------------------------|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| **Monitoring Capabilities** | - Real-time monitoring tailored for financial services                                      | - Versatile monitoring for various industries                                               |
-|                             | - Specialized in applications, servers, and networks                                       | - Strong integration with Prometheus, InfluxDB, and other data sources                       |
-|                             | - Pre-built plugins for financial systems                                                   | - Custom metrics and broad data source support                                               |
-| **Visualization**           | - Detailed visualizations for financial environments                                        | - Highly customizable dashboards with a wide range of visualization options                 |
-|                             | - Requires more setup for desired visualizations                                            | - Intuitive and user-friendly interface for creating and modifying visualizations           |
-| **Data Sources & Integration** | - Strong integration with financial systems and trading platforms                        | - Supports various data sources including Prometheus, InfluxDB, Elasticsearch                |
-|                             | - Limited support for non-financial data sources                                            | - Easy integration with many third-party tools                                               |
-| **Alerting and Notification** | - Advanced real-time alerting with detailed diagnostics                                   | - Flexible alerting with integrations into various notification systems                      |
-|                             | - Configurable alerts based on thresholds and anomalies                                     | - Customizable alerts using queries against monitored data                                   |
-| **User Interface & Usability** | - Detailed but potentially complex interface                                             | - User-friendly and intuitive interface                                                      |
-|                             | - Requires more expertise to navigate and configure                                         | - Easier for new users to learn and use                                                      |
-| **Customization & Extensibility** | - Extensive customization tailored for financial services                             | - Highly extensible with plugins and custom scripts                                          |
-|                             | - Requires deeper knowledge for full utilization                                            | - Strong community support for additional features and plugins                               |
-| **Scalability & Performance** | - Designed for high-performance environments, especially in finance                       | - Scalable across various environments and use cases                                         |
-|                             | - Scales well within its specialized domain                                                 | - Performance depends on underlying data sources and architecture                            |
-| **Deployment & Maintenance** | - Typically deployed on-premises with a focus on enterprise environments                   | - Flexible deployment options (on-premises, cloud)                                           |
-|                             | - Requires more maintenance and expertise                                                   | - Easier to maintain with managed services options (Grafana Cloud)                           |
-| **Cost**                    | - Typically more expensive with significant licensing costs                                | - Open-source with a free version available                                                  |
-|                             | - Reflects specialized features and enterprise focus                                        | - Paid options for enterprise features and managed services                                  |
-| **Support & Community**     | - Professional support tailored for financial services                                      | - Strong community support with continuous development                                       |
-|                             | - Less community-driven support                                                             | - Professional support available for enterprise users                                        |
-| **IBM MQ Monitoring**       | - Native support with pre-built plugins for IBM MQ                                          | - Requires integration with data sources like Prometheus or InfluxDB for IBM MQ              |
-|                             | - Comprehensive metrics on queue managers, queues, channels, and messages                   | - Custom metrics and dashboards can be created                                               |
-|                             | - Real-time data collection and visualization                                               | - Community and third-party plugins available                                                |
-| **IBM MQ Alerting**         | - Configurable real-time alerts with advanced diagnostics                                  | - Flexible alerting with a wide range of notification options                                |
-|                             | - Custom alerts tailored to financial services                                              | - Custom alerts using queries against monitored data                                         |
+import React, { useState } from 'react';
+import assetData, { SubAssetClass, ProductionService } from './assetData';
+import EzyOptionSelector from './EzyOptionSelector';
 
-### Summary:
+const MyComponent: React.FC = () => {
+  const [selectedAssetClass, setSelectedAssetClass] = useState<string | null>(null);
+  const [selectedSubAssetClass, setSelectedSubAssetClass] = useState<string | null>(null);
+  const [subAssetClasses, setSubAssetClasses] = useState<SubAssetClass[]>([]);
+  const [productionServices, setProductionServices] = useState<ProductionService[]>([]);
 
-- **Geneos** is highly specialized for financial services with robust real-time monitoring, advanced alerting, and native support for IBM MQ, making it ideal for environments where these features are critical.
-- **Grafana** offers a versatile, user-friendly, and cost-effective monitoring solution with strong community support, extensive customization options, and flexible deployment, making it suitable for a wide range of industries and use cases.
+  const handleChange = (key: string, value: string) => {
+    console.log(`Key: ${key}, Value: ${value}`);
+  };
 
-The best choice depends on your specific requirements, industry focus, and the level of customization and ease of use you need.
+  const handleAssetClassChange = (value: string) => {
+    setSelectedAssetClass(value);
+    const assetClass = assetData.AssetClasses.find(ac => ac.name === value);
+    setSubAssetClasses(assetClass ? assetClass.SubAssetClasses : []);
+    setSelectedSubAssetClass(null);
+    setProductionServices([]);
+    handleChange('assetclass', value);
+  };
+
+  const handleSubAssetClassChange = (value: string) => {
+    setSelectedSubAssetClass(value);
+    const subAssetClass = subAssetClasses.find(sac => sac.name === value);
+    setProductionServices(subAssetClass ? subAssetClass.ProductionServices : []);
+    handleChange('subAssetClass', value);
+  };
+
+  const handleProductionServiceChange = (value: string) => {
+    handleChange('productionService', value);
+  };
+
+  return (
+    <div>
+      <EzyOptionSelector
+        options={assetData.AssetClasses.map(ac => ac.name)}
+        label="Asset Class"
+        addNew={true}
+        selected={selectedAssetClass}
+        onSelect={handleAssetClassChange}
+      />
+      <EzyOptionSelector
+        options={subAssetClasses?.map(sac => sac.name) || []}
+        label="Sub Asset Class"
+        addNew={true}
+        selected={selectedSubAssetClass}
+        onSelect={handleSubAssetClassChange}
+      />
+      <EzyOptionSelector
+        options={productionServices?.map(ps => ps.name) || []}
+        label="Production Service"
+        addNew={true}
+        selected={null}
+        onSelect={handleProductionServiceChange}
+      />
+    </div>
+  );
+};
+
+export default MyComponent;
