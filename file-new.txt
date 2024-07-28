@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import data from './data.json'; // Adjust the path as necessary
 
 // Mock EzyOptionSelector component for demonstration purposes
-const EzyOptionSelector = ({ options, label, addNew, selected, onSelect }) => (
+const EzyOptionSelector = ({ options, label, selected, onSelect }) => (
   <div>
     <label>{label}</label>
     <select value={selected} onChange={(e) => onSelect(e.target.value)}>
@@ -16,98 +16,50 @@ const EzyOptionSelector = ({ options, label, addNew, selected, onSelect }) => (
   </div>
 );
 
-const DependentSelect = () => {
-  const [issue, setIssue] = useState({
-    acSelection: '',
-    sacSelection: '',
-    ownerSelection: '',
-    applicationSelection: ''
-  });
+const MainComponent = () => {
+  const [acSelection, setAcSelection] = useState('');
+  const [sacSelection, setSacSelection] = useState('');
+  const [ownerSelection, setOwnerSelection] = useState('');
+  const [applicationSelection, setApplicationSelection] = useState('');
 
-  const { acSelection, sacSelection, ownerSelection, applicationSelection } = issue;
-
-  // `handleChange` function to update state based on the selected value
-  const handleChange = useCallback(
-    (key, value) => {
-      setIssue(prevIssue => ({
-        ...prevIssue,
-        [key]: value
-      }));
-    },
-    []
-  );
-
-  // Update sacOptions when acSelection changes
-  useEffect(() => {
-    if (acSelection) {
-      setSacOptions(Object.keys(data[acSelection] || {}));
-    } else {
-      setSacOptions([]);
-      setOwnerOptions([]);
-      setApplicationOptions([]);
-    }
-  }, [acSelection]);
-
-  // Update ownerOptions when acSelection or sacSelection changes
-  useEffect(() => {
-    if (acSelection && sacSelection) {
-      const selectedSac = data[acSelection][sacSelection] || [];
-      const owners = [...new Set(selectedSac.map(item => item.Owner))];
-      setOwnerOptions(owners);
-    } else {
-      setOwnerOptions([]);
-      setApplicationOptions([]);
-    }
-  }, [acSelection, sacSelection]);
-
-  // Update applicationOptions when acSelection, sacSelection, or ownerSelection changes
-  useEffect(() => {
-    if (acSelection && sacSelection && ownerSelection) {
-      const selectedSac = data[acSelection][sacSelection] || [];
-      const selectedOwnerApplications = selectedSac
-        .filter(item => item.Owner === ownerSelection)
-        .map(item => item.Applications);
-
-      // Remove duplicate applications
-      const uniqueApplications = [...new Set(selectedOwnerApplications)];
-      setApplicationOptions(uniqueApplications);
-    } else {
-      setApplicationOptions([]);
-    }
-  }, [acSelection, sacSelection, ownerSelection]);
+  // Determine the options for each dropdown
+  const acOptions = Object.keys(data);
+  const sacOptions = acSelection ? Object.keys(data[acSelection] || {}) : [];
+  const ownerOptions = acSelection && sacSelection
+    ? [...new Set((data[acSelection][sacSelection] || []).map(item => item.Owner))]
+    : [];
+  const applicationOptions = acSelection && sacSelection && ownerSelection
+    ? [...new Set((data[acSelection][sacSelection] || []).filter(item => item.Owner === ownerSelection).map(item => item.Applications))]
+    : [];
 
   return (
     <div>
       <EzyOptionSelector
-        options={Object.keys(data)}
+        options={acOptions}
         label="Asset Class"
-        addNew={true}
         selected={acSelection}
-        onSelect={(v) => handleChange('acSelection', v)}
+        onSelect={setAcSelection}
       />
 
       <EzyOptionSelector
         options={sacOptions}
         label="Sub Asset Class"
-        addNew={true}
         selected={sacSelection}
-        onSelect={(v) => handleChange('sacSelection', v)}
+        onSelect={setSacSelection}
       />
 
       <EzyOptionSelector
         options={ownerOptions}
         label="Owner"
-        addNew={true}
         selected={ownerSelection}
-        onSelect={(v) => handleChange('ownerSelection', v)}
+        onSelect={setOwnerSelection}
       />
 
       <EzyOptionSelector
         options={applicationOptions}
         label="Application"
-        addNew={true}
         selected={applicationSelection}
-        onSelect={(v) => handleChange('applicationSelection', v)}
+        onSelect={setApplicationSelection}
       />
 
       {/* Display selected values */}
@@ -122,4 +74,4 @@ const DependentSelect = () => {
   );
 };
 
-export default DependentSelect;
+export default MainComponent;
