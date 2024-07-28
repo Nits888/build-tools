@@ -7,30 +7,76 @@ const EzyOptionSelector = ({ options, label, selected, onSelect }) => (
     <label>{label}</label>
     <select value={selected} onChange={(e) => onSelect(e.target.value)}>
       <option value="">Select {label}</option>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
+      {options.length > 0 ? (
+        options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))
+      ) : (
+        <option value="" disabled>No options available</option>
+      )}
     </select>
   </div>
 );
 
-const MainComponent = () => {
+export const NewIssue: React.FC = () => {
   const [acSelection, setAcSelection] = useState('');
   const [sacSelection, setSacSelection] = useState('');
   const [ownerSelection, setOwnerSelection] = useState('');
   const [applicationSelection, setApplicationSelection] = useState('');
 
-  // Determine the options for each dropdown
+  // Options for dropdowns
   const acOptions = Object.keys(data);
-  const sacOptions = acSelection ? Object.keys(data[acSelection] || {}) : [];
-  const ownerOptions = acSelection && sacSelection
-    ? [...new Set((data[acSelection][sacSelection] || []).map(item => item.Owner))]
-    : [];
-  const applicationOptions = acSelection && sacSelection && ownerSelection
-    ? [...new Set((data[acSelection][sacSelection] || []).filter(item => item.Owner === ownerSelection).map(item => item.Applications))]
-    : [];
+  const [sacOptions, setSacOptions] = useState<string[]>([]);
+  const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
+  const [applicationOptions, setApplicationOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Update SAC options based on AC selection
+    if (acSelection) {
+      setSacOptions(Object.keys(data[acSelection] || {}));
+      setSacSelection(''); // Reset SAC selection
+      setOwnerSelection(''); // Reset dependent fields
+      setApplicationSelection('');
+    }
+  }, [acSelection]);
+
+  useEffect(() => {
+    // Update Owner options based on SAC selection
+    if (acSelection && sacSelection) {
+      const owners = [...new Set((data[acSelection][sacSelection] || []).map(item => item.Owner))];
+      setOwnerOptions(owners);
+      setOwnerSelection(''); // Reset Owner selection
+      setApplicationSelection('');
+    }
+  }, [acSelection, sacSelection]);
+
+  useEffect(() => {
+    // Update Application options based on Owner selection
+    if (acSelection && sacSelection && ownerSelection) {
+      const applications = [...new Set((data[acSelection][sacSelection] || [])
+        .filter(item => item.Owner === ownerSelection)
+        .map(item => item.Applications))];
+      setApplicationOptions(applications);
+    }
+  }, [acSelection, sacSelection, ownerSelection]);
+
+  const handleAcChange = (value) => {
+    setAcSelection(value);
+  };
+
+  const handleSacChange = (value) => {
+    setSacSelection(value);
+  };
+
+  const handleOwnerChange = (value) => {
+    setOwnerSelection(value);
+  };
+
+  const handleApplicationChange = (value) => {
+    setApplicationSelection(value);
+  };
 
   return (
     <div>
@@ -38,28 +84,28 @@ const MainComponent = () => {
         options={acOptions}
         label="Asset Class"
         selected={acSelection}
-        onSelect={setAcSelection}
+        onSelect={handleAcChange}
       />
 
       <EzyOptionSelector
         options={sacOptions}
         label="Sub Asset Class"
         selected={sacSelection}
-        onSelect={setSacSelection}
+        onSelect={handleSacChange}
       />
 
       <EzyOptionSelector
         options={ownerOptions}
         label="Owner"
         selected={ownerSelection}
-        onSelect={setOwnerSelection}
+        onSelect={handleOwnerChange}
       />
 
       <EzyOptionSelector
         options={applicationOptions}
         label="Application"
         selected={applicationSelection}
-        onSelect={setApplicationSelection}
+        onSelect={handleApplicationChange}
       />
 
       {/* Display selected values */}
@@ -73,5 +119,3 @@ const MainComponent = () => {
     </div>
   );
 };
-
-export default MainComponent;
