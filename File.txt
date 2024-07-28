@@ -1,64 +1,70 @@
-// MyComponent.tsx
+import React, { useState, useEffect } from 'react';
+import data from './data.json'; // Adjust the path as necessary
 
-import React, { useState } from 'react';
-import assetData, { SubAssetClass, ProductionService } from './assetData';
-import EzyOptionSelector from './EzyOptionSelector';
+const DependentSelect = () => {
+  const [acSelection, setAcSelection] = useState('');
+  const [sacOptions, setSacOptions] = useState([]);
+  const [sacSelection, setSacSelection] = useState('');
+  const [applicationOptions, setApplicationOptions] = useState([]);
+  const [applicationSelection, setApplicationSelection] = useState('');
 
-const MyComponent: React.FC = () => {
-  const [selectedAssetClass, setSelectedAssetClass] = useState<string | null>(null);
-  const [selectedSubAssetClass, setSelectedSubAssetClass] = useState<string | null>(null);
-  const [subAssetClasses, setSubAssetClasses] = useState<SubAssetClass[]>([]);
-  const [productionServices, setProductionServices] = useState<ProductionService[]>([]);
+  useEffect(() => {
+    if (acSelection) {
+      setSacOptions(Object.keys(data[acSelection] || {}));
+    } else {
+      setSacOptions([]);
+      setApplicationOptions([]);
+    }
+  }, [acSelection]);
 
-  const handleChange = (key: string, value: string) => {
-    console.log(`Key: ${key}, Value: ${value}`);
-  };
-
-  const handleAssetClassChange = (value: string) => {
-    setSelectedAssetClass(value);
-    const assetClass = assetData.AssetClasses.find(ac => ac.name === value);
-    setSubAssetClasses(assetClass ? assetClass.SubAssetClasses : []);
-    setSelectedSubAssetClass(null);
-    setProductionServices([]);
-    handleChange('assetclass', value);
-  };
-
-  const handleSubAssetClassChange = (value: string) => {
-    setSelectedSubAssetClass(value);
-    const subAssetClass = subAssetClasses.find(sac => sac.name === value);
-    setProductionServices(subAssetClass ? subAssetClass.ProductionServices : []);
-    handleChange('subAssetClass', value);
-  };
-
-  const handleProductionServiceChange = (value: string) => {
-    handleChange('productionService', value);
-  };
+  useEffect(() => {
+    if (acSelection && sacSelection) {
+      const selectedSac = data[acSelection][sacSelection] || [];
+      const applications = [...new Set(selectedSac.map(item => item.Applications))];
+      setApplicationOptions(applications);
+    } else {
+      setApplicationOptions([]);
+    }
+  }, [acSelection, sacSelection]);
 
   return (
     <div>
-      <EzyOptionSelector
-        options={assetData.AssetClasses.map(ac => ac.name)}
-        label="Asset Class"
-        addNew={true}
-        selected={selectedAssetClass}
-        onSelect={handleAssetClassChange}
-      />
-      <EzyOptionSelector
-        options={subAssetClasses?.map(sac => sac.name) || []}
-        label="Sub Asset Class"
-        addNew={true}
-        selected={selectedSubAssetClass}
-        onSelect={handleSubAssetClassChange}
-      />
-      <EzyOptionSelector
-        options={productionServices?.map(ps => ps.name) || []}
-        label="Production Service"
-        addNew={true}
-        selected={null}
-        onSelect={handleProductionServiceChange}
-      />
+      <select value={acSelection} onChange={(e) => setAcSelection(e.target.value)}>
+        <option value="">Select AC</option>
+        {Object.keys(data).map(ac => (
+          <option key={ac} value={ac}>
+            {ac}
+          </option>
+        ))}
+      </select>
+
+      <select value={sacSelection} onChange={(e) => setSacSelection(e.target.value)} disabled={!acSelection}>
+        <option value="">Select SAC</option>
+        {sacOptions.map(sac => (
+          <option key={sac} value={sac}>
+            {sac}
+          </option>
+        ))}
+      </select>
+
+      <select value={applicationSelection} onChange={(e) => setApplicationSelection(e.target.value)} disabled={!sacSelection}>
+        <option value="">Select Application</option>
+        {applicationOptions.map(application => (
+          <option key={application} value={application}>
+            {application}
+          </option>
+        ))}
+      </select>
+
+      {/* Display selected values */}
+      <div>
+        <h3>Selected Values:</h3>
+        <p>AC: {acSelection}</p>
+        <p>SAC: {sacSelection}</p>
+        <p>Application: {applicationSelection}</p>
+      </div>
     </div>
   );
 };
 
-export default MyComponent;
+export default DependentSelect;
