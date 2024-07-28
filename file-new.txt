@@ -37,7 +37,15 @@ export const NewIssue: React.FC = () => {
     if (acSelection) {
       setSacOptions(Object.keys(data[acSelection] || {}));
       setSacSelection(''); // Reset SAC selection
+      setOwnerOptions([]); // Clear owner options
       setOwnerSelection(''); // Reset dependent fields
+      setApplicationOptions([]); // Clear application options
+      setApplicationSelection('');
+    } else {
+      setSacOptions([]); // Clear SAC options if no AC is selected
+      setOwnerOptions([]);
+      setOwnerSelection('');
+      setApplicationOptions([]);
       setApplicationSelection('');
     }
   }, [acSelection]);
@@ -48,6 +56,11 @@ export const NewIssue: React.FC = () => {
       const owners = [...new Set((data[acSelection][sacSelection] || []).map(item => item.Owner))];
       setOwnerOptions(owners);
       setOwnerSelection(''); // Reset Owner selection
+      setApplicationOptions([]); // Clear application options
+      setApplicationSelection('');
+    } else {
+      setOwnerOptions([]); // Clear owner options if no SAC is selected
+      setApplicationOptions([]);
       setApplicationSelection('');
     }
   }, [acSelection, sacSelection]);
@@ -59,6 +72,9 @@ export const NewIssue: React.FC = () => {
         .filter(item => item.Owner === ownerSelection)
         .map(item => item.Applications))];
       setApplicationOptions(applications);
+      setApplicationSelection(''); // Reset application selection
+    } else {
+      setApplicationOptions([]); // Clear application options if no Owner is selected
     }
   }, [acSelection, sacSelection, ownerSelection]);
 
@@ -76,6 +92,16 @@ export const NewIssue: React.FC = () => {
 
   const handleApplicationChange = (value) => {
     setApplicationSelection(value);
+  };
+
+  const resetForm = () => {
+    setAcSelection('');
+    setSacOptions([]);
+    setSacSelection('');
+    setOwnerOptions([]);
+    setOwnerSelection('');
+    setApplicationOptions([]);
+    setApplicationSelection('');
   };
 
   return (
@@ -107,6 +133,8 @@ export const NewIssue: React.FC = () => {
         selected={applicationSelection}
         onSelect={handleApplicationChange}
       />
+
+      <button onClick={resetForm}>Reset Form</button>
 
       {/* Display selected values */}
       <div>
