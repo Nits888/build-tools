@@ -1,0 +1,99 @@
+import React, { useState, useEffect } from 'react';
+import data from './data.json'; // Adjust the path as necessary
+
+const DependentSelect = () => {
+  const [acSelection, setAcSelection] = useState('');
+  const [sacOptions, setSacOptions] = useState([]);
+  const [sacSelection, setSacSelection] = useState('');
+  const [ownerOptions, setOwnerOptions] = useState([]);
+  const [ownerSelection, setOwnerSelection] = useState('');
+  const [applicationOptions, setApplicationOptions] = useState([]);
+  const [applicationSelection, setApplicationSelection] = useState('');
+
+  useEffect(() => {
+    if (acSelection) {
+      setSacOptions(Object.keys(data[acSelection] || {}));
+    } else {
+      setSacOptions([]);
+      setOwnerOptions([]);
+      setApplicationOptions([]);
+    }
+  }, [acSelection]);
+
+  useEffect(() => {
+    if (acSelection && sacSelection) {
+      const selectedSac = data[acSelection][sacSelection] || [];
+      const owners = [...new Set(selectedSac.map(item => item.Owner))];
+      setOwnerOptions(owners);
+    } else {
+      setOwnerOptions([]);
+      setApplicationOptions([]);
+    }
+  }, [acSelection, sacSelection]);
+
+  useEffect(() => {
+    if (acSelection && sacSelection && ownerSelection) {
+      const selectedSac = data[acSelection][sacSelection] || [];
+      const selectedOwnerApplications = selectedSac
+        .filter(item => item.Owner === ownerSelection)
+        .map(item => item.Applications);
+
+      // Remove duplicate applications
+      const uniqueApplications = [...new Set(selectedOwnerApplications)];
+      setApplicationOptions(uniqueApplications);
+    } else {
+      setApplicationOptions([]);
+    }
+  }, [acSelection, sacSelection, ownerSelection]);
+
+  return (
+    <div>
+      <select value={acSelection} onChange={(e) => setAcSelection(e.target.value)}>
+        <option value="">Select AC</option>
+        {Object.keys(data).map(ac => (
+          <option key={ac} value={ac}>
+            {ac}
+          </option>
+        ))}
+      </select>
+
+      <select value={sacSelection} onChange={(e) => setSacSelection(e.target.value)} disabled={!acSelection}>
+        <option value="">Select SAC</option>
+        {sacOptions.map(sac => (
+          <option key={sac} value={sac}>
+            {sac}
+          </option>
+        ))}
+      </select>
+
+      <select value={ownerSelection} onChange={(e) => setOwnerSelection(e.target.value)} disabled={!sacSelection}>
+        <option value="">Select Owner</option>
+        {ownerOptions.map(owner => (
+          <option key={owner} value={owner}>
+            {owner}
+          </option>
+        ))}
+      </select>
+
+      <select value={applicationSelection} onChange={(e) => setApplicationSelection(e.target.value)} disabled={!ownerSelection}>
+        <option value="">Select Application</option>
+        {applicationOptions.map(application => (
+          <option key={application} value={application}>
+            {application}
+          </option>
+        ))}
+      </select>
+
+      {/* Display selected values */}
+      <div>
+        <h3>Selected Values:</h3>
+        <p>AC: {acSelection}</p>
+        <p>SAC: {sacSelection}</p>
+        <p>Owner: {ownerSelection}</p>
+        <p>Application: {applicationSelection}</p>
+      </div>
+    </div>
+  );
+};
+
+export default DependentSelect;
