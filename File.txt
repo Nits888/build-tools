@@ -1,70 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import data from './data.json'; // Adjust the path as necessary
+import pandas as pd
+import json
 
-const DependentSelect = () => {
-  const [acSelection, setAcSelection] = useState('');
-  const [sacOptions, setSacOptions] = useState([]);
-  const [sacSelection, setSacSelection] = useState('');
-  const [applicationOptions, setApplicationOptions] = useState([]);
-  const [applicationSelection, setApplicationSelection] = useState('');
+# Load the Excel file
+file_path = 'C:\\Users\\Nitin\\OneDrive\\Documents\\pivotdata.xlsx'  # Update with your file path
+sheet_name = 'Sheet1'  # Update with your sheet name if necessary
 
-  useEffect(() => {
-    if (acSelection) {
-      setSacOptions(Object.keys(data[acSelection] || {}));
-    } else {
-      setSacOptions([]);
-      setApplicationOptions([]);
-    }
-  }, [acSelection]);
+# Read the Excel file
+df = pd.read_excel(file_path, sheet_name=sheet_name)
 
-  useEffect(() => {
-    if (acSelection && sacSelection) {
-      const selectedSac = data[acSelection][sacSelection] || [];
-      const applications = [...new Set(selectedSac.map(item => item.Applications))];
-      setApplicationOptions(applications);
-    } else {
-      setApplicationOptions([]);
-    }
-  }, [acSelection, sacSelection]);
+# Create a dictionary to hold the data
+data_dict = {}
+for i, row in df.iterrows():
+    asset_class = row['Asset Class']
+    sub_asset_class = row['Sub Asset Class']
+    owner = row['Owner']
+    applications = row['Application']
 
-  return (
-    <div>
-      <select value={acSelection} onChange={(e) => setAcSelection(e.target.value)}>
-        <option value="">Select AC</option>
-        {Object.keys(data).map(ac => (
-          <option key={ac} value={ac}>
-            {ac}
-          </option>
-        ))}
-      </select>
+    if asset_class not in data_dict:
+        data_dict[asset_class] = {}
 
-      <select value={sacSelection} onChange={(e) => setSacSelection(e.target.value)} disabled={!acSelection}>
-        <option value="">Select SAC</option>
-        {sacOptions.map(sac => (
-          <option key={sac} value={sac}>
-            {sac}
-          </option>
-        ))}
-      </select>
+    if sub_asset_class not in data_dict[asset_class]:
+        data_dict[asset_class][sub_asset_class] = []
 
-      <select value={applicationSelection} onChange={(e) => setApplicationSelection(e.target.value)} disabled={!sacSelection}>
-        <option value="">Select Application</option>
-        {applicationOptions.map(application => (
-          <option key={application} value={application}>
-            {application}
-          </option>
-        ))}
-      </select>
+    data_dict[asset_class][sub_asset_class].append({"Owner": owner, "Applications": applications})
 
-      {/* Display selected values */}
-      <div>
-        <h3>Selected Values:</h3>
-        <p>AC: {acSelection}</p>
-        <p>SAC: {sacSelection}</p>
-        <p>Application: {applicationSelection}</p>
-      </div>
-    </div>
-  );
-};
+# Convert the dictionary to a JSON string
+json_data = json.dumps(data_dict, indent=4)
 
-export default DependentSelect;
+# Print the JSON data
+print(json_data)
+
+# Optionally, save the JSON data to a file
+output_file = 'output.json'  # Update with your desired output file path
+with open(output_file, 'w') as f:
+    f.write(json_data)
