@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import data from './data.json'; // Adjust the path as necessary
 
 // Mock EzyOptionSelector component for demonstration purposes
@@ -17,13 +17,25 @@ const EzyOptionSelector = ({ options, label, addNew, selected, onSelect }) => (
 );
 
 const DependentSelect = () => {
-  const [acSelection, setAcSelection] = useState('');
-  const [sacOptions, setSacOptions] = useState([]);
-  const [sacSelection, setSacSelection] = useState('');
-  const [ownerOptions, setOwnerOptions] = useState([]);
-  const [ownerSelection, setOwnerSelection] = useState('');
-  const [applicationOptions, setApplicationOptions] = useState([]);
-  const [applicationSelection, setApplicationSelection] = useState('');
+  const [issue, setIssue] = useState({
+    acSelection: '',
+    sacSelection: '',
+    ownerSelection: '',
+    applicationSelection: ''
+  });
+
+  const { acSelection, sacSelection, ownerSelection, applicationSelection } = issue;
+
+  // `handleChange` function to update state based on the selected value
+  const handleChange = useCallback(
+    (key, value) => {
+      setIssue(prevIssue => ({
+        ...prevIssue,
+        [key]: value
+      }));
+    },
+    []
+  );
 
   // Update sacOptions when acSelection changes
   useEffect(() => {
@@ -64,25 +76,6 @@ const DependentSelect = () => {
     }
   }, [acSelection, sacSelection, ownerSelection]);
 
-  const handleChange = (type, value) => {
-    switch (type) {
-      case 'ac':
-        setAcSelection(value);
-        break;
-      case 'sac':
-        setSacSelection(value);
-        break;
-      case 'owner':
-        setOwnerSelection(value);
-        break;
-      case 'application':
-        setApplicationSelection(value);
-        break;
-      default:
-        break;
-    }
-  };
-
   return (
     <div>
       <EzyOptionSelector
@@ -90,7 +83,7 @@ const DependentSelect = () => {
         label="Asset Class"
         addNew={true}
         selected={acSelection}
-        onSelect={(v) => handleChange('ac', v)}
+        onSelect={(v) => handleChange('acSelection', v)}
       />
 
       <EzyOptionSelector
@@ -98,7 +91,7 @@ const DependentSelect = () => {
         label="Sub Asset Class"
         addNew={true}
         selected={sacSelection}
-        onSelect={(v) => handleChange('sac', v)}
+        onSelect={(v) => handleChange('sacSelection', v)}
       />
 
       <EzyOptionSelector
@@ -106,7 +99,7 @@ const DependentSelect = () => {
         label="Owner"
         addNew={true}
         selected={ownerSelection}
-        onSelect={(v) => handleChange('owner', v)}
+        onSelect={(v) => handleChange('ownerSelection', v)}
       />
 
       <EzyOptionSelector
@@ -114,7 +107,7 @@ const DependentSelect = () => {
         label="Application"
         addNew={true}
         selected={applicationSelection}
-        onSelect={(v) => handleChange('application', v)}
+        onSelect={(v) => handleChange('applicationSelection', v)}
       />
 
       {/* Display selected values */}
