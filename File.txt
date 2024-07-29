@@ -1,36 +1,171 @@
-import pandas as pd
-import json
+import React, { useReducer, useEffect } from 'react';
+import data from './data.json'; // Adjust the path as necessary
 
-# Load the Excel file
-file_path = 'C:\\Users\\Nitin\\OneDrive\\Documents\\pivotdata.xlsx'  # Update with your file path
-sheet_name = 'Sheet1'  # Update with your sheet name if necessary
+const initialState = {
+  acSelection: '',
+  sacOptions: [],
+  sacSelection: '',
+  ownerOptions: [],
+  ownerSelection: '',
+  applicationOptions: [],
+  applicationSelection: '',
+};
 
-# Read the Excel file
-df = pd.read_excel(file_path, sheet_name=sheet_name)
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'SET_AC_SELECTION':
+      return {
+        ...state,
+        acSelection: action.value,
+        sacOptions: Object.keys(data[action.value] || {}),
+        sacSelection: '',
+        ownerOptions: [],
+        ownerSelection: '',
+        applicationOptions: [],
+        applicationSelection: '',
+      };
+    case 'SET_SAC_SELECTION':
+      return {
+        ...state,
+        sacSelection: action.value,
+        ownerOptions: [
+          ...new Set(
+            (data[state.acSelection][action.value] || []).map((item) => item.Owner)
+          ),
+        ],
+        ownerSelection: '',
+        applicationOptions: [],
+        applicationSelection: '',
+      };
+    case 'SET_OWNER_SELECTION':
+      return {
+        ...state,
+        ownerSelection: action.value,
+        applicationOptions: [
+          ...new Set(
+            (data[state.acSelection][state.sacSelection] || [])
+              .filter((item) => item.Owner === action.value)
+              .map((item) => item.Applications)
+          ),
+        ],
+        applicationSelection: '',
+      };
+    case 'SET_APPLICATION_SELECTION':
+      return {
+        ...state,
+        applicationSelection: action.value,
+      };
+    case 'RESET_FORM':
+      return initialState;
+    default:
+      return state;
+  }
+};
 
-# Create a dictionary to hold the data
-data_dict = {}
-for i, row in df.iterrows():
-    asset_class = row['Asset Class']
-    sub_asset_class = row['Sub Asset Class']
-    owner = row['Owner']
-    applications = row['Application']
+const EzyOptionSelector = ({ options, label, selected, onSelect }) => (
+  <div>
+    <label>{label}</label>
+    <select value={selected} onChange={(e) => onSelect(e.target.value)}>
+      <option value="">Select {label}</option>
+      {options.length > 0 ? (
+        options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))
+      ) : (
+        <option value="" disabled>
+          No options available
+        </option>
+      )}
+    </select>
+  </div>
+);
 
-    if asset_class not in data_dict:
-        data_dict[asset_class] = {}
+export const NewIssue: React.FC = () => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-    if sub_asset_class not in data_dict[asset_class]:
-        data_dict[asset_class][sub_asset_class] = []
+  useEffect(() => {
+    // Update SAC options based on AC selection
+    if (state.acSelection) {
+      dispatch({ type: 'SET_SAC_SELECTION', value: state.sacSelection });
+    }
+  }, [state.acSelection]);
 
-    data_dict[asset_class][sub_asset_class].append({"Owner": owner, "Applications": applications})
+  useEffect(() => {
+    // Update Owner options based on SAC selection
+    if (state.sacSelection) {
+      dispatch({ type: 'SET_OWNER_SELECTION', value: state.ownerSelection });
+    }
+  }, [state.sacSelection]);
 
-# Convert the dictionary to a JSON string
-json_data = json.dumps(data_dict, indent=4)
+  useEffect(() => {
+    // Update Application options based on Owner selection
+    if (state.ownerSelection) {
+      dispatch({ type: 'SET_OWNER_SELECTION', value: state.ownerSelection });
+    }
+  }, [state.ownerSelection]);
 
-# Print the JSON data
-print(json_data)
+  const handleAcChange = (value) => {
+    dispatch({ type: 'SET_AC_SELECTION', value });
+  };
 
-# Optionally, save the JSON data to a file
-output_file = 'output.json'  # Update with your desired output file path
-with open(output_file, 'w') as f:
-    f.write(json_data)
+  const handleSacChange = (value) => {
+    dispatch({ type: 'SET_SAC_SELECTION', value });
+  };
+
+  const handleOwnerChange = (value) => {
+    dispatch({ type: 'SET_OWNER_SELECTION', value });
+  };
+
+  const handleApplicationChange = (value) => {
+    dispatch({ type: 'SET_APPLICATION_SELECTION', value });
+  };
+
+  const resetForm = () => {
+    dispatch({ type: 'RESET_FORM' });
+  };
+
+  return (
+    <div>
+      <EzyOptionSelector
+        options={Object.keys(data)}
+        label="Asset Class"
+        selected={state.acSelection}
+        onSelect={handleAcChange}
+      />
+
+      <EzyOptionSelector
+        options={state.sacOptions}
+        label="Sub Asset Class"
+        selected={state.sacSelection}
+        onSelect={handleSacChange}
+      />
+
+      <EzyOptionSelector
+        options={state.ownerOptions}
+        label="Owner"
+        selected={state.ownerSelection}
+        onSelect={handleOwnerChange}
+      />
+
+      <EzyOptionSelector
+        options={state.applicationOptions}
+        label="Application"
+        selected={state.applicationSelection}
+        onSelect={handleApplicationChange}
+      />
+
+      <button onClick={resetForm}>Reset Form</button>
+
+      {/* Display selected values */}
+      <div>
+        <h3>Selected Values:</h3>
+        <p>AC: {state.acSelection}</p>
+        <p>SAC: {state.sacSelection}</p>
+        <p>Owner: {state.ownerSelection}</p>
+        <p>Application: {state.applicationSelection}</p>
+      </div>
+    </div>
+  );
+};
