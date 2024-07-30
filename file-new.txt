@@ -1,48 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import data from './data.json'; // Adjust the path as necessary
+import EzyOptionSelector from './EzyOptionSelector';
 
-// Mock EzyOptionSelector component for demonstration purposes
-const EzyOptionSelector = ({ options, label, selected, onSelect }) => (
-  <div>
-    <label>{label}</label>
-    <select value={selected} onChange={(e) => onSelect(e.target.value)}>
-      <option value="">Select {label}</option>
-      {options.length > 0 ? (
-        options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))
-      ) : (
-        <option value="" disabled>No options available</option>
-      )}
-    </select>
-  </div>
-);
-
-export const NewIssue: React.FC = () => {
+export const NewIssue = () => {
   const [acSelection, setAcSelection] = useState('');
   const [sacSelection, setSacSelection] = useState('');
   const [ownerSelection, setOwnerSelection] = useState('');
   const [applicationSelection, setApplicationSelection] = useState('');
 
-  // Options for dropdowns
   const acOptions = Object.keys(data);
   const [sacOptions, setSacOptions] = useState<string[]>([]);
   const [ownerOptions, setOwnerOptions] = useState<string[]>([]);
   const [applicationOptions, setApplicationOptions] = useState<string[]>([]);
 
   useEffect(() => {
-    // Update SAC options based on AC selection
     if (acSelection) {
       setSacOptions(Object.keys(data[acSelection] || {}));
-      setSacSelection(''); // Reset SAC selection
-      setOwnerOptions([]); // Clear owner options
-      setOwnerSelection(''); // Reset dependent fields
-      setApplicationOptions([]); // Clear application options
+      setSacSelection('');
+      setOwnerOptions([]);
+      setOwnerSelection('');
+      setApplicationOptions([]);
       setApplicationSelection('');
     } else {
-      setSacOptions([]); // Clear SAC options if no AC is selected
+      setSacOptions([]);
       setOwnerOptions([]);
       setOwnerSelection('');
       setApplicationOptions([]);
@@ -51,47 +31,69 @@ export const NewIssue: React.FC = () => {
   }, [acSelection]);
 
   useEffect(() => {
-    // Update Owner options based on SAC selection
     if (acSelection && sacSelection) {
       const owners = [...new Set((data[acSelection][sacSelection] || []).map(item => item.Owner))];
       setOwnerOptions(owners);
-      setOwnerSelection(''); // Reset Owner selection
-      setApplicationOptions([]); // Clear application options
+      setOwnerSelection('');
+      setApplicationOptions([]);
       setApplicationSelection('');
     } else {
-      setOwnerOptions([]); // Clear owner options if no SAC is selected
+      setOwnerOptions([]);
       setApplicationOptions([]);
       setApplicationSelection('');
     }
   }, [acSelection, sacSelection]);
 
   useEffect(() => {
-    // Update Application options based on Owner selection
     if (acSelection && sacSelection && ownerSelection) {
       const applications = [...new Set((data[acSelection][sacSelection] || [])
         .filter(item => item.Owner === ownerSelection)
         .map(item => item.Applications))];
       setApplicationOptions(applications);
-      setApplicationSelection(''); // Reset application selection
+      setApplicationSelection('');
     } else {
-      setApplicationOptions([]); // Clear application options if no Owner is selected
+      setApplicationOptions([]);
     }
   }, [acSelection, sacSelection, ownerSelection]);
 
-  const handleAcChange = (value) => {
+  const handleAcChange = (value: string) => {
     setAcSelection(value);
   };
 
-  const handleSacChange = (value) => {
+  const handleSacChange = (value: string) => {
     setSacSelection(value);
   };
 
-  const handleOwnerChange = (value) => {
+  const handleOwnerChange = (value: string) => {
     setOwnerSelection(value);
   };
 
-  const handleApplicationChange = (value) => {
+  const handleApplicationChange = (value: string) => {
     setApplicationSelection(value);
+  };
+
+  const handleAddManualAc = (value: string) => {
+    if (!acOptions.includes(value)) {
+      acOptions.push(value);
+    }
+  };
+
+  const handleAddManualSac = (value: string) => {
+    if (!sacOptions.includes(value)) {
+      setSacOptions(prev => [...prev, value]);
+    }
+  };
+
+  const handleAddManualOwner = (value: string) => {
+    if (!ownerOptions.includes(value)) {
+      setOwnerOptions(prev => [...prev, value]);
+    }
+  };
+
+  const handleAddManualApplication = (value: string) => {
+    if (!applicationOptions.includes(value)) {
+      setApplicationOptions(prev => [...prev, value]);
+    }
   };
 
   const resetForm = () => {
@@ -111,6 +113,7 @@ export const NewIssue: React.FC = () => {
         label="Asset Class"
         selected={acSelection}
         onSelect={handleAcChange}
+        onAddManual={handleAddManualAc}
       />
 
       <EzyOptionSelector
@@ -118,6 +121,7 @@ export const NewIssue: React.FC = () => {
         label="Sub Asset Class"
         selected={sacSelection}
         onSelect={handleSacChange}
+        onAddManual={handleAddManualSac}
       />
 
       <EzyOptionSelector
@@ -125,6 +129,7 @@ export const NewIssue: React.FC = () => {
         label="Owner"
         selected={ownerSelection}
         onSelect={handleOwnerChange}
+        onAddManual={handleAddManualOwner}
       />
 
       <EzyOptionSelector
@@ -132,6 +137,7 @@ export const NewIssue: React.FC = () => {
         label="Application"
         selected={applicationSelection}
         onSelect={handleApplicationChange}
+        onAddManual={handleAddManualApplication}
       />
 
       <button onClick={resetForm}>Reset Form</button>
@@ -147,3 +153,5 @@ export const NewIssue: React.FC = () => {
     </div>
   );
 };
+
+export default NewIssue;
