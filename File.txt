@@ -1,171 +1,48 @@
-import React, { useReducer, useEffect } from 'react';
-import data from './data.json'; // Adjust the path as necessary
+import React, { useState } from 'react';
 
-const initialState = {
-  acSelection: '',
-  sacOptions: [],
-  sacSelection: '',
-  ownerOptions: [],
-  ownerSelection: '',
-  applicationOptions: [],
-  applicationSelection: '',
-};
+interface EzyOptionSelectorProps {
+  options: string[];
+  label: string;
+  selected: string;
+  onSelect: (value: string) => void;
+  onAddManual: (value: string) => void;
+}
 
-const reducer = (state, action) => {
-  switch (action.type) {
-    case 'SET_AC_SELECTION':
-      return {
-        ...state,
-        acSelection: action.value,
-        sacOptions: Object.keys(data[action.value] || {}),
-        sacSelection: '',
-        ownerOptions: [],
-        ownerSelection: '',
-        applicationOptions: [],
-        applicationSelection: '',
-      };
-    case 'SET_SAC_SELECTION':
-      return {
-        ...state,
-        sacSelection: action.value,
-        ownerOptions: [
-          ...new Set(
-            (data[state.acSelection][action.value] || []).map((item) => item.Owner)
-          ),
-        ],
-        ownerSelection: '',
-        applicationOptions: [],
-        applicationSelection: '',
-      };
-    case 'SET_OWNER_SELECTION':
-      return {
-        ...state,
-        ownerSelection: action.value,
-        applicationOptions: [
-          ...new Set(
-            (data[state.acSelection][state.sacSelection] || [])
-              .filter((item) => item.Owner === action.value)
-              .map((item) => item.Applications)
-          ),
-        ],
-        applicationSelection: '',
-      };
-    case 'SET_APPLICATION_SELECTION':
-      return {
-        ...state,
-        applicationSelection: action.value,
-      };
-    case 'RESET_FORM':
-      return initialState;
-    default:
-      return state;
-  }
-};
+const EzyOptionSelector: React.FC<EzyOptionSelectorProps> = ({ options, label, selected, onSelect, onAddManual }) => {
+  const [manualValue, setManualValue] = useState('');
 
-const EzyOptionSelector = ({ options, label, selected, onSelect }) => (
-  <div>
-    <label>{label}</label>
-    <select value={selected} onChange={(e) => onSelect(e.target.value)}>
-      <option value="">Select {label}</option>
-      {options.length > 0 ? (
-        options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))
-      ) : (
-        <option value="" disabled>
-          No options available
-        </option>
-      )}
-    </select>
-  </div>
-);
-
-export const NewIssue: React.FC = () => {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  useEffect(() => {
-    // Update SAC options based on AC selection
-    if (state.acSelection) {
-      dispatch({ type: 'SET_SAC_SELECTION', value: state.sacSelection });
+  const handleAddManualValue = () => {
+    if (manualValue && !options.includes(manualValue)) {
+      onAddManual(manualValue);
+      setManualValue('');
     }
-  }, [state.acSelection]);
-
-  useEffect(() => {
-    // Update Owner options based on SAC selection
-    if (state.sacSelection) {
-      dispatch({ type: 'SET_OWNER_SELECTION', value: state.ownerSelection });
-    }
-  }, [state.sacSelection]);
-
-  useEffect(() => {
-    // Update Application options based on Owner selection
-    if (state.ownerSelection) {
-      dispatch({ type: 'SET_OWNER_SELECTION', value: state.ownerSelection });
-    }
-  }, [state.ownerSelection]);
-
-  const handleAcChange = (value) => {
-    dispatch({ type: 'SET_AC_SELECTION', value });
-  };
-
-  const handleSacChange = (value) => {
-    dispatch({ type: 'SET_SAC_SELECTION', value });
-  };
-
-  const handleOwnerChange = (value) => {
-    dispatch({ type: 'SET_OWNER_SELECTION', value });
-  };
-
-  const handleApplicationChange = (value) => {
-    dispatch({ type: 'SET_APPLICATION_SELECTION', value });
-  };
-
-  const resetForm = () => {
-    dispatch({ type: 'RESET_FORM' });
   };
 
   return (
     <div>
-      <EzyOptionSelector
-        options={Object.keys(data)}
-        label="Asset Class"
-        selected={state.acSelection}
-        onSelect={handleAcChange}
-      />
-
-      <EzyOptionSelector
-        options={state.sacOptions}
-        label="Sub Asset Class"
-        selected={state.sacSelection}
-        onSelect={handleSacChange}
-      />
-
-      <EzyOptionSelector
-        options={state.ownerOptions}
-        label="Owner"
-        selected={state.ownerSelection}
-        onSelect={handleOwnerChange}
-      />
-
-      <EzyOptionSelector
-        options={state.applicationOptions}
-        label="Application"
-        selected={state.applicationSelection}
-        onSelect={handleApplicationChange}
-      />
-
-      <button onClick={resetForm}>Reset Form</button>
-
-      {/* Display selected values */}
-      <div>
-        <h3>Selected Values:</h3>
-        <p>AC: {state.acSelection}</p>
-        <p>SAC: {state.sacSelection}</p>
-        <p>Owner: {state.ownerSelection}</p>
-        <p>Application: {state.applicationSelection}</p>
-      </div>
+      <label>{label}</label>
+      <select value={selected} onChange={(e) => onSelect(e.target.value)}>
+        <option value="">Select {label}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+        <option value="add-new">Add New...</option>
+      </select>
+      {selected === "add-new" && (
+        <div>
+          <input
+            type="text"
+            placeholder={`Add ${label}`}
+            value={manualValue}
+            onChange={(e) => setManualValue(e.target.value)}
+          />
+          <button onClick={handleAddManualValue}>Add</button>
+        </div>
+      )}
     </div>
   );
 };
+
+export default EzyOptionSelector;
