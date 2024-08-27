@@ -1,48 +1,33 @@
-import React, { useState } from 'react';
+public List<NonEimIssues> getAllNonEimIssue() {
+    var issues = nonEimIssueRepository.findAll();
+    var allProject = projectRepository.findByNonEIMValidProjects();
+    
+    // Create a map to easily retrieve projects by their issueId
+    var projectMap = allProject.stream()
+                               .collect(Collectors.toMap(Project::getIssueId, project -> project));
 
-interface EzyOptionSelectorProps {
-  options: string[];
-  label: string;
-  selected: string;
-  onSelect: (value: string) => void;
-  onAddManual: (value: string) => void;
+    // Iterate through each issue and process them
+    issues.forEach(issue -> {
+        var issueId = issue.getIssueId();
+
+        if (issueId != null) {
+            var project = projectMap.get(issueId);
+
+            if (project != null && project.getProjectId() != null) {
+                // Fetch and set project costs
+                var pCost = peopleCostRepository.findByprojectId(project.getProjectId());
+                var iCost = infraCostRepository.findByprojectId(project.getProjectId());
+                var oCost = otherCostRepository.findByprojectId(project.getProjectId());
+
+                issue.setProjectPeopleCost(pCost.stream().mapToDouble(PeopleCost::getTotalCost).sum());
+                issue.setProjectInfraCost(iCost.stream().mapToDouble(InfraCost::getTotalCost).sum());
+                issue.setProjectOtherCost(oCost.stream().mapToDouble(OtherCost::getCost).sum());
+                
+                issue.setProjectRemediationYear(project.getProjectRemediationYear());
+                issue.setProjectId(project.getProjectId());
+            }
+        }
+    });
+
+    return issues;
 }
-
-const EzyOptionSelector: React.FC<EzyOptionSelectorProps> = ({ options, label, selected, onSelect, onAddManual }) => {
-  const [manualValue, setManualValue] = useState('');
-
-  const handleAddManualValue = () => {
-    if (manualValue && !options.includes(manualValue)) {
-      onAddManual(manualValue);
-      setManualValue('');
-    }
-  };
-
-  return (
-    <div>
-      <label>{label}</label>
-      <select value={selected} onChange={(e) => onSelect(e.target.value)}>
-        <option value="">Select {label}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-        <option value="add-new">Add New...</option>
-      </select>
-      {selected === "add-new" && (
-        <div>
-          <input
-            type="text"
-            placeholder={`Add ${label}`}
-            value={manualValue}
-            onChange={(e) => setManualValue(e.target.value)}
-          />
-          <button onClick={handleAddManualValue}>Add</button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default EzyOptionSelector;
