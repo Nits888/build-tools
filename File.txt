@@ -1,33 +1,48 @@
-public List<NonEimIssues> getAllNonEimIssue() {
-    var issues = nonEimIssueRepository.findAll();
-    var allProject = projectRepository.findByNonEIMValidProjects();
-    
-    // Create a map to easily retrieve projects by their issueId
-    var projectMap = allProject.stream()
-                               .collect(Collectors.toMap(Project::getIssueId, project -> project));
 
-    // Iterate through each issue and process them
-    issues.forEach(issue -> {
-        var issueId = issue.getIssueId();
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.utils import formataddr
 
-        if (issueId != null) {
-            var project = projectMap.get(issueId);
+# Email credentials and details
+sender_email = "youremail@example.com"
+receiver_email = "recipient@example.com"
+password = "yourpassword"
 
-            if (project != null && project.getProjectId() != null) {
-                // Fetch and set project costs
-                var pCost = peopleCostRepository.findByprojectId(project.getProjectId());
-                var iCost = infraCostRepository.findByprojectId(project.getProjectId());
-                var oCost = otherCostRepository.findByprojectId(project.getProjectId());
+# Create the MIME Multipart message
+msg = MIMEMultipart('related')
+msg['From'] = formataddr(('Your Name', sender_email))
+msg['To'] = receiver_email
+msg['Subject'] = "Subject: Email with Embedded Image"
 
-                issue.setProjectPeopleCost(pCost.stream().mapToDouble(PeopleCost::getTotalCost).sum());
-                issue.setProjectInfraCost(iCost.stream().mapToDouble(InfraCost::getTotalCost).sum());
-                issue.setProjectOtherCost(oCost.stream().mapToDouble(OtherCost::getCost).sum());
-                
-                issue.setProjectRemediationYear(project.getProjectRemediationYear());
-                issue.setProjectId(project.getProjectId());
-            }
-        }
-    });
+# HTML body with an embedded image
+html = """
+<html>
+  <body>
+    <p>This is an email with an embedded image!<br>
+       <img src="cid:image1"><br>
+       Best regards,<br>Your Name
+    </p>
+  </body>
+</html>
+"""
+msg.attach(MIMEText(html, 'html'))
 
-    return issues;
-}
+# Attach image with Content-ID (cid)
+image_path = "path_to_your_image.jpg"
+with open(image_path, 'rb') as image_file:
+    img = MIMEImage(image_file.read())
+    img.add_header('Content-ID', '<image1>')
+    img.add_header('Content-Disposition', 'inline', filename=image_path)
+    msg.attach(img)
+
+# Sending the email
+try:
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()  # Enable security
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+        print("Email sent successfully")
+except Exception as e:
+    print(f"Error sending email: {e}")
